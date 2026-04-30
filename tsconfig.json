@@ -1,0 +1,25 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts",
+    "app/modal.js",
+    "app/_layout.tsx",
+    "app/(tabs)/_layout.js",
+    "app/(tabs)/explore.js",
+    "app/(tabs)/index.js",
+    "app/home.js",
+    "app/_layout.js",
+    "app/Leaderboard/leaderboard.js",
+    "app/Leaderboard/LeaderboardScreen.js",
+    "app/TicTacToe/tictactoe.js"
+  ]
+}

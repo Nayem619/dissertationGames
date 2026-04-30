@@ -1,0 +1,372 @@
+import { Nexus } from "@/constants/theme";
+import { useRouter } from "expo-router";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { StatusBar } from "expo-status-bar";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { auth } from "../constants/firebase";
+
+const GAMES = [
+  {
+    id: "tictactoe",
+    name: "TIC TAC TOE",
+    icon: "⚔️",
+    route: "/TicTacToe/tictactoe",
+    accent: { bg: "rgba(0, 255, 136, 0.2)", border: "rgba(0, 255, 136, 0.45)", iconBg: "#00cc99" },
+  },
+  {
+    id: "trivia",
+    name: "TRIVIA",
+    icon: "🧠",
+    route: "/trivia/trivia",
+    accent: { bg: "rgba(255, 0, 255, 0.12)", border: "rgba(255, 0, 255, 0.4)", iconBg: "#d946b8" },
+  },
+  {
+    id: "snake",
+    name: "SNAKE",
+    icon: "🐍",
+    route: "/Snake/snake",
+    accent: { bg: "rgba(0, 212, 255, 0.12)", border: "rgba(0, 212, 255, 0.45)", iconBg: "#0099cc" },
+  },
+  {
+    id: "gemmatch",
+    name: "GEM MATCH",
+    icon: "💎",
+    href: { pathname: "/Snake/snake", params: { play: "gem" } },
+    route: null,
+    accent: { bg: "rgba(236, 72, 153, 0.15)", border: "rgba(244, 114, 182, 0.55)", iconBg: "#be185d" },
+  },
+  {
+    id: "runner",
+    name: "ENDLESS RUNNER",
+    icon: "🏃",
+    route: "/EndlessRunner/endlessrunner",
+    accent: { bg: "rgba(255, 170, 0, 0.15)", border: "rgba(255, 170, 0, 0.5)", iconBg: "#ff8800" },
+  },
+  {
+    id: "rps",
+    name: "ROCK PAPER SCISSORS",
+    icon: "✊",
+    route: "/RockPaperScissors/rockpaperscissors",
+    accent: { bg: "rgba(255, 0, 85, 0.12)", border: "rgba(255, 0, 85, 0.4)", iconBg: "#ff3388" },
+  },
+];
+
+export default function Home() {
+  const router = useRouter();
+  const [displayName, setDisplayName] = useState("…");
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const d =
+          user.displayName ||
+          user.email?.split("@")[0] ||
+          "Player";
+        setDisplayName(d);
+      } else {
+        setDisplayName("Guest");
+      }
+    });
+    return unsub;
+  }, []);
+
+  const initial = displayName.charAt(0).toUpperCase() || "G";
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.replace("/authentication/login");
+    } catch (error) {
+      Alert.alert("Logout Error", "Could not log out. Please try again.");
+      console.error("Logout error:", error);
+    }
+  };
+
+  const playGame = (g) => {
+    if (g.href) {
+      router.push(g.href);
+    } else {
+      router.push(g.route);
+    }
+  };
+
+  const quickPlay = () => {
+    const pick = GAMES[Math.floor(Math.random() * GAMES.length)];
+    playGame(pick);
+  };
+
+  return (
+    <SafeAreaView style={styles.safe} edges={["top", "right", "left"]}>
+      <StatusBar style="light" />
+      <View style={styles.root}>
+        <View style={styles.glowG} />
+        <View style={styles.glowM} />
+        <View style={styles.glowC} />
+
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.headerRow}>
+            <View style={styles.headerTextWrap}>
+              <Text style={styles.arenaTitle}>NEXUS ARENA</Text>
+              <Text style={styles.welcome}>
+                Welcome back,{" "}
+                <Text style={styles.welcomeHighlight}>{displayName}</Text>
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.avatar,
+                Platform.select({
+                  ios: {
+                    shadowColor: Nexus.green,
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: 0.5,
+                    shadowRadius: 16,
+                  },
+                  android: { elevation: 8 },
+                }),
+              ]}
+            >
+              <Text style={styles.avatarLetter}>{initial}</Text>
+            </View>
+          </View>
+
+          {GAMES.map((game) => (
+            <Pressable
+              key={game.id}
+              style={({ pressed }) => [
+                styles.card,
+                {
+                  borderColor: game.accent.border,
+                },
+                pressed && { opacity: 0.88, transform: [{ scale: 0.99 }] },
+              ]}
+              onPress={() => playGame(game)}
+            >
+              <View
+                style={[
+                  styles.iconWrap,
+                  { backgroundColor: game.accent.iconBg },
+                ]}
+              >
+                <Text style={styles.iconEmoji}>{game.icon}</Text>
+              </View>
+              <Text style={styles.cardTitle}>{game.name}</Text>
+              <Text style={styles.cardSub}>Choose your mode</Text>
+
+              <View style={styles.modesRow}>
+                <View style={styles.modeChip}>
+                  <Text style={styles.modeIcon}>◉</Text>
+                  <Text style={styles.modeText}>SOLO</Text>
+                </View>
+                <View style={styles.modeChip}>
+                  <Text style={styles.modeIcon}>◎</Text>
+                  <Text style={styles.modeText}>FRIEND</Text>
+                </View>
+                <View style={styles.modeChip}>
+                  <Text style={styles.modeIcon}>🌐</Text>
+                  <Text style={styles.modeText}>ONLINE</Text>
+                </View>
+              </View>
+            </Pressable>
+          ))}
+
+          <View style={styles.quickRow}>
+            <View style={styles.quickIconBox}>
+              <Text style={styles.gamepad}>🎮</Text>
+            </View>
+            <View style={styles.quickTextCol}>
+              <Text style={styles.quickTitle}>QUICK MATCH</Text>
+              <Text style={styles.quickSub}>
+                Jump into a random game
+              </Text>
+            </View>
+            <Pressable
+              style={({ pressed }) => [
+                styles.playNow,
+                pressed && { opacity: 0.9 },
+              ]}
+              onPress={quickPlay}
+            >
+              <Text style={styles.playNowText}>PLAY</Text>
+            </Pressable>
+          </View>
+
+          <Pressable
+            style={({ pressed }) => [styles.outlineBtn, pressed && { opacity: 0.85 }]}
+            onPress={handleLogout}
+          >
+            <Text style={styles.outlineBtnText}>LOG OUT</Text>
+          </Pressable>
+        </ScrollView>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: Nexus.bg },
+  root: { flex: 1, backgroundColor: Nexus.bg },
+  glowG: {
+    position: "absolute",
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: "rgba(0, 255, 136, 0.06)",
+    top: -40,
+    right: -80,
+  },
+  glowM: {
+    position: "absolute",
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: "rgba(255, 0, 255, 0.05)",
+    bottom: 100,
+    left: -70,
+  },
+  glowC: {
+    position: "absolute",
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: "rgba(0, 212, 255, 0.04)",
+    top: "30%",
+    left: -50,
+  },
+  scroll: { padding: 20, paddingBottom: 40 },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 24,
+  },
+  headerTextWrap: { flex: 1, paddingRight: 12 },
+  arenaTitle: {
+    fontSize: 32,
+    fontWeight: "900",
+    color: Nexus.green,
+    textShadowColor: "rgba(0, 255, 136, 0.4)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 14,
+  },
+  welcome: { fontSize: 16, color: Nexus.textMuted, marginTop: 6 },
+  welcomeHighlight: { color: Nexus.green, fontWeight: "700" },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Nexus.green,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarLetter: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: Nexus.darkText,
+  },
+  card: {
+    backgroundColor: Nexus.bgCard,
+    borderWidth: 2,
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 16,
+    borderColor: Nexus.borderDim,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  iconWrap: {
+    alignSelf: "flex-start",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  iconEmoji: { fontSize: 36 },
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: Nexus.text,
+    marginBottom: 4,
+  },
+  cardSub: { fontSize: 14, color: Nexus.textMuted, marginBottom: 16 },
+  modesRow: { flexDirection: "row", gap: 8 },
+  modeChip: {
+    flex: 1,
+    backgroundColor: "rgba(26, 26, 36, 0.85)",
+    borderWidth: 1,
+    borderColor: "rgba(0, 255, 136, 0.2)",
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+  modeIcon: { fontSize: 10, color: Nexus.textMuted, marginBottom: 2 },
+  modeText: { fontSize: 10, fontWeight: "700", color: Nexus.textMuted },
+  quickRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(19, 19, 26, 0.75)",
+    borderWidth: 1,
+    borderColor: "rgba(0, 255, 136, 0.2)",
+    borderRadius: 14,
+    padding: 16,
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  quickIconBox: { marginRight: 12 },
+  gamepad: { fontSize: 28 },
+  quickTextCol: { flex: 1 },
+  quickTitle: { fontSize: 16, fontWeight: "800", color: Nexus.text },
+  quickSub: { fontSize: 12, color: Nexus.textMuted, marginTop: 2 },
+  playNow: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: Nexus.magenta,
+    ...Platform.select({
+      ios: {
+        shadowColor: Nexus.magenta,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.45,
+        shadowRadius: 10,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  playNowText: {
+    fontWeight: "900",
+    fontSize: 13,
+    color: Nexus.text,
+  },
+  outlineBtn: {
+    borderWidth: 1,
+    borderColor: "rgba(255, 0, 85, 0.5)",
+    borderRadius: 12,
+    paddingVertical: 14,
+  },
+  outlineBtnText: {
+    textAlign: "center",
+    color: "#ff6b7a",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+});
