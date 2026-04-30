@@ -1,11 +1,20 @@
-# Render: static web export for Expo (not `node expo-router/entry`).
-# https://render.com/docs/static-sites
+# -----------------------------------------------------------------------------
+# CORRECT SETUP ON RENDER (pick ONE):
 #
-# In the Render dashboard you can instead create a Static Site manually with:
-#   Build command:  npm install && npm run export:web
-#   Publish directory: dist
+# A) STATIC SITE (recommended – no Node at runtime)
+#    Dashboard: New → Static Site → this repo
+#    Build command:     npm install && npm run export:web
+#    Publish directory: dist
+#    Do NOT set a Start Command.
 #
-# Set EXPO_PUBLIC_* env vars on Render before deploy — they are baked in at build time.
+# B) WEB SERVICE (only if you already created a Web Service)
+#    Build command:  npm install && npm run export:web
+#    Start command:  npm run start:render
+#    NOT: node expo-router/entry  ← that is WRONG (Metro dev entry, not a server)
+#
+# Set NODE_VERSION=20 (or 22) in Environment if export fails on Node 24.
+# Set EXPO_PUBLIC_* env vars before build — they are inlined into the static bundle.
+# -----------------------------------------------------------------------------
 
 services:
   - type: web
