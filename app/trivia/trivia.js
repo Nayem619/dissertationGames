@@ -20,16 +20,12 @@ import {
 } from "react-native";
 import { db } from "../../constants/firebase";
 
-const OPENAI_KEY =
-  "";
-
-const auth = getAuth(); 
+const auth = getAuth();
 
 const TRIVIA_COLLECTION = "trivia_questions";
 const TRIVIA_QUIZ_LENGTH = 5;
 /** ~0.5 uses Firestore when enough questions exist; otherwise OpenAI fills in. */
 const FIREBASE_SOURCE_PROBABILITY = 0.5;
-
 const normalizeQuestion = (raw) => {
   const question = String(raw?.question ?? "").trim();
   const options = Array.isArray(raw?.options)
@@ -51,7 +47,8 @@ const shuffleArray = (array) => {
 };
 
 function getOpenAIKey() {
-  return OPENAI_KEY;
+  const k = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+  return typeof k === "string" ? k.trim() : "";
 }
 
 async function fetchFromFirebase(difficulty, count) {
@@ -85,7 +82,7 @@ async function generateWithOpenai(difficulty, count) {
   const apiKey = getOpenAIKey();
   if (!apiKey) {
     throw new Error(
-      "Missing OpenAI key. Set OPENAI_KEY at the top of trivia.js."
+      "Missing OpenAI key. Set EXPO_PUBLIC_OPENAI_API_KEY in .env and restart Expo."
     );
   }
 
@@ -158,7 +155,7 @@ async function buildQuizForDifficulty(difficulty) {
     if (!apiKey) {
       if (fromCache.length === 0) {
         throw new Error(
-          "No trivia in Firebase and no OpenAI key. Set OPENAI_KEY at the top of trivia.js."
+          "No trivia in Firebase and no OpenAI key. Set EXPO_PUBLIC_OPENAI_API_KEY in .env."
         );
       }
       return shuffleArray([...fromCache]).slice(0, fromCache.length);
@@ -174,7 +171,7 @@ async function buildQuizForDifficulty(difficulty) {
   const fromCache = await fetchFromFirebase(difficulty, n);
   if (fromCache.length < n) {
     throw new Error(
-      "Not enough questions in Firebase and OpenAI key is missing. Set OPENAI_KEY in trivia.js or add questions to trivia_questions."
+      "Not enough questions in Firebase and OpenAI key is missing. Set EXPO_PUBLIC_OPENAI_API_KEY in .env or add questions to trivia_questions."
     );
   }
   return fromCache;
