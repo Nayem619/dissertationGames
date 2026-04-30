@@ -1,24 +1,14 @@
-# -----------------------------------------------------------------------------
-# CORRECT SETUP ON RENDER (pick ONE):
+# Sync this Blueprint in Render (Dashboard → your service → Blueprint / Link repo),
+# OR create a new Web Service and paste Build + Start from below.
 #
-# A) STATIC SITE (recommended – no Node at runtime)
-#    Dashboard: New → Static Site → this repo
-#    Build command:     npm install && npm run export:web
-#    Publish directory: dist
-#    Do NOT set a Start Command.
-#
-# B) WEB SERVICE (only if you already created a Web Service)
-#    Build command:  npm install && npm run export:web
-#    Start command:  npm run start:render
-#    NOT: node expo-router/entry  ← that is WRONG (Metro dev entry, not a server)
-#
-# Set NODE_VERSION=20 (or 22) in Environment if export fails on Node 24.
-# Set EXPO_PUBLIC_* env vars before build — they are inlined into the static bundle.
-# -----------------------------------------------------------------------------
+# Required env on Render (same as .env.example): EXPO_PUBLIC_FIREBASE_*, etc.
 
 services:
   - type: web
     name: dissertationgames-web
-    runtime: static
+    runtime: node
     buildCommand: npm install && npm run export:web
-    staticPublishPath: dist
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "20.18.0"
