@@ -23,7 +23,7 @@ import { db } from "../../constants/firebase";
 const OPENAI_KEY =
   "";
 
-const auth = getAuth();
+const auth = getAuth(); 
 
 const TRIVIA_COLLECTION = "trivia_questions";
 const TRIVIA_QUIZ_LENGTH = 5;
