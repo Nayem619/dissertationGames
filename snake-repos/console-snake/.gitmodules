@@ -1,0 +1,3 @@
+[submodule "modules/Console-Player"]
+	path = modules/Console-Player
+	url = https://github.com/leimao/Console-Player.git

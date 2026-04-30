@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "icon": "./assets/icon.png",
+    "primaryColor": "#7ED321",
+    "splash": {
+      "image": "./assets/loading.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#7ED321"
+    }
+  }
+}
