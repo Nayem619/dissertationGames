@@ -23,7 +23,7 @@ import {
   useConsumePlayEntitlement,
 } from "@/lib/useConsumePlayEntitlement";
 import { getISOWeekKey } from "../../lib/weekKey";
-import { db } from "../../constants/firebase";
+import { db, firebaseIsConfigured } from "../../constants/firebase";
 import { softAcceptChallenge } from "@/lib/challenges";
 
 const auth = getAuth();
@@ -32,6 +32,43 @@ const TRIVIA_COLLECTION = "trivia_questions";
 const TRIVIA_QUIZ_LENGTH = 5;
 /** ~0.5 uses Firestore when enough questions exist; otherwise OpenAI fills in. */
 const FIREBASE_SOURCE_PROBABILITY = 0.5;
+/** Avoid infinite spinner when Firebase is stubbed/disabled or the network hangs. */
+const FIRESTORE_QUERY_TIMEOUT_MS = 45_000;
+const OPENAI_FETCH_TIMEOUT_MS = 60_000;
+
+// #region agent log
+const __DEBUG_INGEST =
+  typeof fetch !== "undefined"
+    ? (payload) =>
+        fetch("http://127.0.0.1:7865/ingest/0ecd33e7-af68-46c6-bbe3-d95a5d8f6748", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "1c5831",
+          },
+          body: JSON.stringify({
+            sessionId: "1c5831",
+            timestamp: Date.now(),
+            ...payload,
+          }),
+        }).catch(() => {})
+    : () => {};
+// #endregion
+
+function promiseWithTimeout(promise, ms, label) {
+  let t;
+  const timeoutPromise = new Promise((_, rej) => {
+    t = setTimeout(
+      () => rej(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)),
+      ms
+    );
+  });
+  return Promise.race([
+    promise.finally(() => clearTimeout(t)),
+    timeoutPromise,
+  ]);
+}
+
 const normalizeQuestion = (raw) => {
   const question = String(raw?.question ?? "").trim();
   const options = Array.isArray(raw?.options)
@@ -58,9 +95,35 @@ function getOpenAIKey() {
 }
 
 async function fetchFromFirebase(difficulty, count) {
+  if (!firebaseIsConfigured) return [];
   const ref = collection(db, TRIVIA_COLLECTION);
   const qy = query(ref, where("difficulty", "==", difficulty));
-  const snap = await getDocs(qy);
+  // #region agent log
+  const _t0 = Date.now();
+  __DEBUG_INGEST({
+    location: "trivia.js:fetchFromFirebase:start",
+    message: "firestore query start",
+    hypothesisId: "H1-stub-firestore-hang",
+    data: { difficulty, count },
+  });
+  // #endregion
+  const snap = await promiseWithTimeout(
+    getDocs(qy),
+    FIRESTORE_QUERY_TIMEOUT_MS,
+    "Loading trivia from Firebase"
+  );
+  // #region agent log
+  __DEBUG_INGEST({
+    location: "trivia.js:fetchFromFirebase:done",
+    message: "firestore query done",
+    hypothesisId: "H1-stub-firestore-hang",
+    data: {
+      difficulty,
+      docs: snap.docs.length,
+      elapsedMs: Date.now() - _t0,
+    },
+  });
+  // #endregion
   const list = snap.docs
     .map((d) => {
       const data = d.data();
@@ -75,13 +138,18 @@ async function fetchFromFirebase(difficulty, count) {
 }
 
 async function saveQuestionToFirebase(difficulty, item) {
+  if (!firebaseIsConfigured) return;
   const normalized = normalizeQuestion(item);
   if (!normalized) return;
-  await addDoc(collection(db, TRIVIA_COLLECTION), {
-    ...normalized,
-    difficulty,
-    createdAt: serverTimestamp(),
-  });
+  try {
+    await addDoc(collection(db, TRIVIA_COLLECTION), {
+      ...normalized,
+      difficulty,
+      createdAt: serverTimestamp(),
+    });
+  } catch (_) {
+    // Signed-out users can't write trivia_questions; quiz still playable.
+  }
 }
 
 async function generateWithOpenai(difficulty, count) {
@@ -95,29 +163,80 @@ async function generateWithOpenai(difficulty, count) {
   const difficultyLabel =
     difficulty === "easy" ? "easy" : difficulty === "hard" ? "hard" : "medium";
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a trivia author. Return only valid JSON with a key 'questions' (array). Each item must have: question (string), options (array of exactly 4 distinct strings), answer (string, must be identical to one of the options). No extra keys.",
+  const ac = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const deadlineTimer = setTimeout(() => {
+    try {
+      ac?.abort();
+    } catch (_) {}
+  }, OPENAI_FETCH_TIMEOUT_MS);
+
+  let res;
+  try {
+    // #region agent log
+    __DEBUG_INGEST({
+      location: "trivia.js:generateWithOpenai:fetch:start",
+      message: "openai fetch start",
+      hypothesisId: "H3-openai-hang",
+      data: { difficulty, count },
+    });
+    // #endregion
+    res = await promiseWithTimeout(
+      fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        ...(ac ? { signal: ac.signal } : {}),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
         },
-        {
-          role: "user",
-          content: `Create exactly ${count} ${difficultyLabel} general-knowledge multiple-choice questions. Vary topics. Be concise. JSON only.`,
-        },
-      ],
-      temperature: 0.7,
-    }),
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a trivia author. Return only valid JSON with a key 'questions' (array). Each item must have: question (string), options (array of exactly 4 distinct strings), answer (string, must be identical to one of the options). No extra keys.",
+            },
+            {
+              role: "user",
+              content: `Create exactly ${count} ${difficultyLabel} general-knowledge multiple-choice questions. Vary topics. Be concise. JSON only.`,
+            },
+          ],
+          temperature: 0.7,
+        }),
+      }),
+      OPENAI_FETCH_TIMEOUT_MS + 2500,
+      "OpenAI API"
+    );
+  } catch (err) {
+    // #region agent log
+    __DEBUG_INGEST({
+      location: "trivia.js:generateWithOpenai:fetch:error",
+      message: "openai fetch error",
+      hypothesisId: "H3-openai-hang",
+      data: {
+        name: err?.name,
+        message: String(err?.message || err).slice(0, 200),
+      },
+    });
+    // #endregion
+    if (err?.name === "AbortError") {
+      throw new Error(
+        `OpenAI request timed out after ${OPENAI_FETCH_TIMEOUT_MS / 1000}s. Try again.`
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(deadlineTimer);
+  }
+  // #region agent log
+  __DEBUG_INGEST({
+    location: "trivia.js:generateWithOpenai:fetch:done",
+    message: "openai fetch complete",
+    hypothesisId: "H3-openai-hang",
+    data: { status: res?.status, ok: res?.ok },
   });
+  // #endregion
 
   if (!res.ok) {
     const errText = await res.text();
@@ -149,8 +268,29 @@ async function generateWithOpenai(difficulty, count) {
 /** Mix Firestore and OpenAI so cache absorbs part of the traffic. */
 async function buildQuizForDifficulty(difficulty) {
   const n = TRIVIA_QUIZ_LENGTH;
-  const preferFirebase = Math.random() < FIREBASE_SOURCE_PROBABILITY;
   const apiKey = getOpenAIKey();
+  const preferFirebase =
+    firebaseIsConfigured && Math.random() < FIREBASE_SOURCE_PROBABILITY;
+  // #region agent log
+  __DEBUG_INGEST({
+    location: "trivia.js:buildQuizForDifficulty",
+    message: "branch",
+    hypothesisId: "H2-branch",
+    data: {
+      firebaseIsConfigured,
+      hasOpenAIKey: !!apiKey,
+      preferFirebase,
+      difficulty,
+    },
+  });
+  // #endregion
+
+  if (!firebaseIsConfigured && !apiKey) {
+    throw new Error(
+      "Firebase is not configured in this deployment and no OpenAI key is set. " +
+        "On Render: set EXPO_PUBLIC_FIREBASE_* (and optionally EXPO_PUBLIC_OPENAI_API_KEY), then redeploy."
+    );
+  }
 
   if (preferFirebase) {
     const fromCache = await fetchFromFirebase(difficulty, n);
@@ -161,7 +301,7 @@ async function buildQuizForDifficulty(difficulty) {
     if (!apiKey) {
       if (fromCache.length === 0) {
         throw new Error(
-          "No trivia in Firebase and no OpenAI key. Set EXPO_PUBLIC_OPENAI_API_KEY in .env."
+          "No trivia in Firebase and no OpenAI key. Set EXPO_PUBLIC_OPENAI_API_KEY on Render (or in .env for local)."
         );
       }
       return shuffleArray([...fromCache]).slice(0, fromCache.length);
@@ -177,7 +317,7 @@ async function buildQuizForDifficulty(difficulty) {
   const fromCache = await fetchFromFirebase(difficulty, n);
   if (fromCache.length < n) {
     throw new Error(
-      "Not enough questions in Firebase and OpenAI key is missing. Set EXPO_PUBLIC_OPENAI_API_KEY in .env or add questions to trivia_questions."
+      "Not enough cached trivia and no OpenAI key. Set EXPO_PUBLIC_OPENAI_API_KEY on Render (or .env locally) or add questions to trivia_questions in Firebase."
     );
   }
   return fromCache;
@@ -204,6 +344,7 @@ function TriviaGameInner() {
   const [questions, setQuestions] = useState([]);
   const [scoreSaved, setScoreSaved] = useState(false);
   const [loadingQuiz, setLoadingQuiz] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   const currentQuestion = questions[questionIndex];
 
@@ -221,7 +362,16 @@ function TriviaGameInner() {
   const startQuiz = async () => {
     if (!selectedDifficulty) return;
 
+    setLoadError("");
     setLoadingQuiz(true);
+    // #region agent log
+    __DEBUG_INGEST({
+      location: "trivia.js:startQuiz",
+      message: "start",
+      hypothesisId: "H4-startQuiz",
+      data: { difficulty: selectedDifficulty },
+    });
+    // #endregion
     try {
       const built = await buildQuizForDifficulty(selectedDifficulty);
       setQuestions(built);
@@ -235,6 +385,15 @@ function TriviaGameInner() {
       challengeBeatRef.current = false;
     } catch (e) {
       const msg = e?.message || "Could not load trivia.";
+      // #region agent log
+      __DEBUG_INGEST({
+        location: "trivia.js:startQuiz:catch",
+        message: String(msg).slice(0, 300),
+        hypothesisId: "H4-startQuiz",
+        data: { difficulty: selectedDifficulty },
+      });
+      // #endregion
+      setLoadError(msg);
       Alert.alert("Trivia", msg);
     } finally {
       setLoadingQuiz(false);
@@ -272,6 +431,7 @@ function TriviaGameInner() {
     setSelectedDifficulty("");
     setQuestions([]);
     setScoreSaved(false);
+    setLoadError("");
   };
 
   const saveScoreToFirebase = async () => {
@@ -383,7 +543,10 @@ function TriviaGameInner() {
                     styles.difficultyButton,
                     selectedDifficulty === "easy" && styles.easyActive,
                   ]}
-                  onPress={() => setSelectedDifficulty("easy")}
+                  onPress={() => {
+                    setLoadError("");
+                    setSelectedDifficulty("easy");
+                  }}
                 >
                   <Text
                     style={[
@@ -400,7 +563,10 @@ function TriviaGameInner() {
                     styles.difficultyButton,
                     selectedDifficulty === "medium" && styles.mediumActive,
                   ]}
-                  onPress={() => setSelectedDifficulty("medium")}
+                  onPress={() => {
+                    setLoadError("");
+                    setSelectedDifficulty("medium");
+                  }}
                 >
                   <Text
                     style={[
@@ -417,7 +583,10 @@ function TriviaGameInner() {
                     styles.difficultyButton,
                     selectedDifficulty === "hard" && styles.hardActive,
                   ]}
-                  onPress={() => setSelectedDifficulty("hard")}
+                  onPress={() => {
+                    setLoadError("");
+                    setSelectedDifficulty("hard");
+                  }}
                 >
                   <Text
                     style={[
@@ -435,6 +604,10 @@ function TriviaGameInner() {
                   <ActivityIndicator size="large" color="#007bff" />
                   <Text style={styles.loadingText}>Preparing your quiz…</Text>
                 </View>
+              ) : null}
+
+              {!!loadError && !loadingQuiz ? (
+                <Text style={styles.loadErrorBanner}>{loadError}</Text>
               ) : null}
 
               <TouchableOpacity
@@ -852,6 +1025,17 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: "#666",
     fontSize: 15,
+  },
+
+  loadErrorBanner: {
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: "#fff3cd",
+    color: "#856404",
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
   },
 
   buttonText: {
