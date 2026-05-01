@@ -23,6 +23,10 @@ const useWebviewShim = !fs.existsSync(webviewPkg);
 config.resolver.extraNodeModules = {
   ...(config.resolver.extraNodeModules || {}),
   tslib: require.resolve("tslib"),
+  /** Repo has ./expo-router/entry.js shim for mistaken `node expo-router/entry` hosting; Metro must stay on nm. */
+  ...(fs.existsSync(path.join(projectRoot, "node_modules", "expo-router"))
+    ? { "expo-router": path.join(projectRoot, "node_modules", "expo-router") }
+    : {}),
   ...(useWebviewShim
     ? {
         "react-native-webview": path.join(

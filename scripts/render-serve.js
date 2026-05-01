@@ -7,8 +7,6 @@ const fs = require("fs");
 const http = require("http");
 const path = require("path");
 
-const dist = path.resolve(path.join(__dirname, "..", "dist"));
-
 const MIME = {
   ".html": "text/html; charset=utf-8",
   ".htm": "text/html; charset=utf-8",
@@ -31,7 +29,7 @@ const MIME = {
 };
 
 /** URL path → absolute path under dist; null if traversal / invalid */
-function resolvedPathWithinDist(reqUrl) {
+function resolvedPathWithinDist(reqUrl, dist) {
   let pathname = "/";
   try {
     pathname = new URL(reqUrl || "/", "http://0.0.0.0").pathname;
@@ -63,7 +61,7 @@ function serveFile(absPath, res) {
   });
 }
 
-function fallbackIndexHtml(res) {
+function fallbackIndexHtml(dist, res) {
   const ix = path.join(dist, "index.html");
   if (!fs.existsSync(ix)) {
     res.writeHead(503, { "Content-Type": "text/plain; charset=utf-8" });
@@ -73,49 +71,65 @@ function fallbackIndexHtml(res) {
   serveFile(ix, res);
 }
 
-function handle(req, res) {
-  const full = resolvedPathWithinDist(req.url || "/");
-  if (!full) {
-    res.writeHead(403);
-    res.end("Forbidden");
-    return;
-  }
-
-  fs.stat(full, (err, st) => {
-    if (!err && st.isFile()) {
-      serveFile(full, res);
+function createHandler(dist) {
+  return function handle(req, res) {
+    const full = resolvedPathWithinDist(req.url || "/", dist);
+    if (!full) {
+      res.writeHead(403);
+      res.end("Forbidden");
       return;
     }
-    if (!err && st.isDirectory()) {
-      const ix = path.join(full, "index.html");
-      if (fs.existsSync(ix)) {
-        serveFile(ix, res);
+
+    fs.stat(full, (err, st) => {
+      if (!err && st.isFile()) {
+        serveFile(full, res);
         return;
       }
-    }
+      if (!err && st.isDirectory()) {
+        const ix = path.join(full, "index.html");
+        if (fs.existsSync(ix)) {
+          serveFile(ix, res);
+          return;
+        }
+      }
 
-    fallbackIndexHtml(res);
+      fallbackIndexHtml(dist, res);
+    });
+  };
+}
+
+/**
+ * @param {{ repoRoot?: string }} [opts]
+ */
+function startRenderWebServer(opts = {}) {
+  const repoRoot = path.resolve(opts.repoRoot || path.join(__dirname, ".."));
+  const dist = path.join(repoRoot, "dist");
+
+  if (!fs.existsSync(path.join(dist, "index.html"))) {
+    console.error("[render-serve] Missing dist/index.html — run expo export web first.");
+    process.exit(1);
+  }
+
+  const port = parseInt(process.env.PORT, 10);
+  if (!Number.isFinite(port) || port < 1) {
+    console.error("[render-serve] $PORT invalid:", process.env.PORT);
+    process.exit(1);
+  }
+
+  const server = http.createServer(createHandler(dist));
+  server.keepAliveTimeout = 65000;
+  server.listen(port, "0.0.0.0", () => {
+    console.log("[render-serve]", `listen http://0.0.0.0:${port}`, "dist=", dist);
+  });
+
+  server.on("error", (err) => {
+    console.error("[render-serve] listen failed", err);
+    process.exit(1);
   });
 }
 
-if (!fs.existsSync(path.join(dist, "index.html"))) {
-  console.error("[render-serve] Missing dist/index.html — run expo export web first.");
-  process.exit(1);
+module.exports = { startRenderWebServer };
+
+if (require.main === module) {
+  startRenderWebServer();
 }
-
-const port = parseInt(process.env.PORT, 10);
-if (!Number.isFinite(port) || port < 1) {
-  console.error("[render-serve] $PORT invalid:", process.env.PORT);
-  process.exit(1);
-}
-
-const server = http.createServer(handle);
-server.keepAliveTimeout = 65000;
-server.listen(port, "0.0.0.0", () => {
-  console.log("[render-serve]", `listen http://0.0.0.0:${port}`, "dist=", dist);
-});
-
-server.on("error", (err) => {
-  console.error("[render-serve] listen failed", err);
-  process.exit(1);
-});
