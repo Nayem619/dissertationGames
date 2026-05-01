@@ -1,7 +1,10 @@
 # Sync this Blueprint in Render (Dashboard → your service → Blueprint / Link repo),
 # OR create a new Web Service and paste Build + Start from below.
 #
-# Required env on Render (same as .env.example): EXPO_PUBLIC_FIREBASE_*, etc.
+# Troubleshooting: https://render.com/docs/troubleshooting-deploys
+#
+# Builds run `npm install`; postinstall runs `expo export` when RENDER=true.
+# Expo inlines EXPO_PUBLIC_* at export time — set them On Render BEFORE build:
 
 services:
   - type: web
@@ -12,3 +15,24 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20.18.0"
+      # Must be \"true\" for scripts/render-postinstall.js (skips quietly if omitted).
+      - key: RENDER
+        value: "true"
+      # Fill in Dashboard if using Blueprint (sync: false) or declare values here:
+      - key: EXPO_PUBLIC_FIREBASE_API_KEY
+        sync: false
+      - key: EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: EXPO_PUBLIC_FIREBASE_PROJECT_ID
+        sync: false
+      - key: EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET
+        sync: false
+      - key: EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+        sync: false
+      - key: EXPO_PUBLIC_FIREBASE_APP_ID
+        sync: false
+      # Optional — Analytics / trivia:
+      - key: EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID
+        sync: false
+      - key: EXPO_PUBLIC_OPENAI_API_KEY
+        sync: false
