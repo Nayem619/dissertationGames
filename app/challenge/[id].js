@@ -1,5 +1,6 @@
 import { Nexus } from "@/constants/theme";
 import { CHALLENGE_KINDS, getChallengeDoc, softAcceptChallenge } from "@/lib/challenges";
+import { shareChallengeLinks } from "@/lib/publicWebUrl";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -49,8 +50,8 @@ export default function ChallengeScreen() {
   }, [id]);
 
   const shareDeep = async () => {
-    const msg = `dissertationgames://challenge/${encodeURIComponent(id)}`;
-    await Share.share({ message: `${msg}\n${kindLabel(row?.kind)} · beat ${row?.targetMetric}` });
+    const { message } = shareChallengeLinks(id);
+    await Share.share({ message: `${message}\n${kindLabel(row?.kind)} · beat ${row?.targetMetric}` });
   };
 
   const openChallenge = async () => {

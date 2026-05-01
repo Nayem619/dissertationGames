@@ -20,6 +20,8 @@ services:
       # Needed by scripts/render-postinstall.js only during native npm installs (optional in Docker).
       - key: RENDER
         value: "true"
+      - key: EXPO_PUBLIC_WEB_APP_URL
+        value: "https://dissertationgames.onrender.com"
       - key: EXPO_PUBLIC_FIREBASE_API_KEY
         sync: false
       - key: EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN

@@ -1,7 +1,7 @@
 import { Nexus } from "@/constants/theme";
 import { bindResponderToStudyDuel } from "@/lib/studyDuels";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   ScrollView,
@@ -23,6 +23,11 @@ export default function StudyDuelJoinScreen() {
   const params = useLocalSearchParams();
   const fromLink = paramFirst(params, "id") || "";
   const [inviteId, setInviteId] = useState(String(fromLink).trim());
+
+  useEffect(() => {
+    const t = String(fromLink || "").trim();
+    if (t) setInviteId(t);
+  }, [fromLink]);
   const [busy, setBusy] = useState(false);
 
   const onJoin = async () => {

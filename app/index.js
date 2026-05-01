@@ -25,6 +25,14 @@ export default function Landing() {
           </Text>
 
           <Pressable
+            style={({ pressed }) => [styles.btnArena, pressed && { opacity: 0.9 }]}
+            onPress={() => router.push("/home")}
+          >
+            <Text style={styles.btnArenaText}>ENTER NEXUS ARENA · GAMES</Text>
+          </Pressable>
+          <Text style={styles.guestHint}>No sign-in required for solo & arcade (web + app demos).</Text>
+
+          <Pressable
             style={({ pressed }) => [styles.btnPrimary, pressed && { opacity: 0.9 }]}
             onPress={() => router.push("/authentication/login")}
           >
@@ -119,8 +127,32 @@ const styles = StyleSheet.create({
     color: Nexus.textMuted,
     textAlign: "center",
     marginTop: 16,
-    marginBottom: 28,
+    marginBottom: 12,
     lineHeight: 20,
+  },
+  btnArena: {
+    width: "100%",
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "rgba(0, 212, 255, 0.55)",
+    backgroundColor: "rgba(0, 212, 255, 0.12)",
+    marginBottom: 10,
+  },
+  btnArenaText: {
+    textAlign: "center",
+    fontWeight: "800",
+    fontSize: 14,
+    color: Nexus.cyan,
+    letterSpacing: 0.5,
+  },
+  guestHint: {
+    fontSize: 12,
+    color: Nexus.textMuted,
+    textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 16,
+    paddingHorizontal: 8,
   },
   btnPrimary: {
     width: "100%",

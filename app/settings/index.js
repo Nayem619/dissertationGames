@@ -24,6 +24,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
 import { auth } from "@/constants/firebase";
+import { shareChallengeLinks } from "@/lib/publicWebUrl";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -110,9 +111,9 @@ export default function SettingsScreen() {
         floors,
         "settings-demo-ladder"
       );
-      const link = `dissertationgames://challenge/${encodeURIComponent(cid)}`;
+      const { message } = shareChallengeLinks(cid);
       await Share.share({
-        message: `Beat my puzzle ladder (${floors}+ stages cleared)\n${link}`,
+        message: `Beat my puzzle ladder (${floors}+ stages cleared)\n${message}`,
       });
     } catch (e) {
       Alert.alert("Challenge", String(e?.message || e));
@@ -129,9 +130,9 @@ export default function SettingsScreen() {
       const prof = await getPublicProfile(u.uid);
       const tag = String(prof?.username || prof?.usernameLower || "player").replace(/^@/, "");
       const cid = await publishAsyncChallenge(CHALLENGE_KINDS.arcade_flappy, tag, 20, "settings-demo");
-      const link = `dissertationgames://challenge/${encodeURIComponent(cid)}`;
+      const { message } = shareChallengeLinks(cid);
       await Share.share({
-        message: `Beat my dodge run (${CHALLENGE_KINDS.arcade_flappy} ≥20)\n${link}`,
+        message: `Beat my dodge run (${CHALLENGE_KINDS.arcade_flappy} ≥20)\n${message}`,
       });
     } catch (e) {
       Alert.alert("Challenge", String(e?.message || e));

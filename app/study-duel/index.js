@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { shareStudyDuelLinks } from "@/lib/publicWebUrl";
 
 export default function StudyDuelHostScreen() {
   const router = useRouter();
@@ -27,15 +28,15 @@ export default function StudyDuelHostScreen() {
       const row = await createBlindStudyDuelInvite(game === "chess" ? "chess" : "tictactoe");
       setInviteId(row.duelId);
       setPendingStudyDuelInvite(row.duelId);
-      const link = `dissertationgames://study-duel/join?id=${encodeURIComponent(row.duelId)}`;
+      const { message } = shareStudyDuelLinks(row.duelId);
       Alert.alert(
         "Duel created",
         `You are blind‑assigned letter ${row.challengerLetter}. Host the matching room next, then share the invite ID with your partner.`
       );
       try {
-        await Share.share({ message: `Nexus study duel\nID: ${row.duelId}\n${link}` });
+        await Share.share({ message: `Nexus study duel\nID: ${row.duelId}\n${message}` });
       } catch {
-        Alert.alert("Invite", `Copy manually:\n${row.duelId}\n${link}`);
+        Alert.alert("Invite", `Copy manually:\n${row.duelId}\n${message}`);
       }
     } catch (e) {
       Alert.alert("Duel", String(e?.message || e));
