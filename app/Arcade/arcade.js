@@ -22,6 +22,7 @@ import {
 } from "./extraGamesHtml";
 import { dispatchPuzzleWebMessage } from "@/lib/puzzleBridge";
 import { PhaserInlineWebView } from "./PhaserWebGameShell";
+import { PHASER_ARCADE_ROWS } from "./arcadeCatalog";
 
 import { hubStyles } from "./arcadeHubStyles";
 
@@ -30,80 +31,21 @@ function paramFirst(p, key) {
   return Array.isArray(v) ? v[0] : v;
 }
 
-const ARCADE_ITEMS = [
-  {
-    play: "chess",
-    title: "CHESS",
-    emoji: "♟️",
-    blurb: "Two-player locally. Legal moves · tap highlighted targets.",
-    color: "#1a5533",
-    html: PHASER_CHESS_HTML,
-    lb: null,
-  },
-  {
-    play: "breakout",
-    title: "BREAKOUT",
-    emoji: "🧱",
-    blurb: "Drag paddle · smash all bricks.",
-    color: "#0f4fd4",
-    html: PHASER_BREAKOUT_HTML,
-    lb: "arcade_breakout",
-  },
-  {
-    play: "memory",
-    title: "CARD MATCH",
-    emoji: "🃏",
-    blurb: "Find pairs. Tap replay zone after you clear.",
-    color: "#6b21b6",
-    html: PHASER_MEMORY_HTML,
-    lb: "arcade_memory",
-  },
-  {
-    play: "pong",
-    title: "PONG VS CPU",
-    emoji: "🏓",
-    blurb: "Move bottom paddle · bounce past the AI.",
-    color: "#b45309",
-    html: PHASER_PONG_HTML,
-    lb: "arcade_pong",
-  },
-  {
-    play: "flappy",
-    title: "DODGE RUN",
-    emoji: "🪶",
-    blurb: "Tap to lift · avoid red bars · score climbs with time alive.",
-    color: "#0284c7",
-    html: PHASER_FLAPPY_HTML,
-    lb: "arcade_flappy",
-  },
-  {
-    play: "simon",
-    title: "SIMON FLASH",
-    emoji: "🎵",
-    blurb: "Repeat the color sequence · longer each round.",
-    color: "#c026d3",
-    html: PHASER_SIMON_HTML,
-    lb: "arcade_simon",
-  },
-  {
-    play: "connect4",
-    title: "CONNECT FOUR",
-    emoji: "🔴",
-    blurb: "Two-player hot-seat · drops to bottom.",
-    color: "#15803d",
-    html: PHASER_CONNECT4_HTML,
-    lb: "arcade_connect4",
-  },
-  {
-    play: "ludo",
-    title: "LUDO LITE",
-    emoji: "🎲",
-    blurb: "Phaser sprint loop · capture · hot-seat · tap purple.",
-    color: "#7c1485",
-    html: PHASER_LUDO_LITE_HTML,
-    lb: null,
-  },
-];
+const HTML_BY_PLAY = {
+  chess: PHASER_CHESS_HTML,
+  breakout: PHASER_BREAKOUT_HTML,
+  memory: PHASER_MEMORY_HTML,
+  pong: PHASER_PONG_HTML,
+  flappy: PHASER_FLAPPY_HTML,
+  simon: PHASER_SIMON_HTML,
+  connect4: PHASER_CONNECT4_HTML,
+  ludo: PHASER_LUDO_LITE_HTML,
+};
+
+const ARCADE_ITEMS = PHASER_ARCADE_ROWS.map((row) => ({
+  ...row,
+  html: HTML_BY_PLAY[row.play],
+})).filter((x) => x.html);
 
 function ArcadeHub() {
   const router = useRouter();
@@ -113,69 +55,6 @@ function ArcadeHub() {
         <Text style={hubStyles.h1}>Phaser arcade</Text>
         <Text style={hubStyles.sub}>HTML5 Phaser&nbsp;3 + chess.js. Same CDN pattern as Snake. Works offline only if CDN cached.</Text>
 
-        <Text style={[hubStyles.h1, { fontSize: 18, marginTop: 12, marginBottom: 10 }]}>Native puzzles</Text>
-        <TouchableOpacity
-          style={hubStyles.card}
-          activeOpacity={0.92}
-          onPress={() => router.push({ pathname: "/puzzle-ladder" })}
-        >
-          <View style={hubStyles.row}>
-            <View style={[hubStyles.emojiBox, { backgroundColor: "#0e7490" }]}>
-              <Text style={hubStyles.emoji}>🔗</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={hubStyles.title}>Puzzle ladder</Text>
-              <Text style={hubStyles.blurb}>Flow dots → rotating pipes → ice slide · difficulty ramps.</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={hubStyles.card}
-          activeOpacity={0.92}
-          onPress={() => router.push("/puzzle/flow")}
-        >
-          <View style={hubStyles.row}>
-            <View style={[hubStyles.emojiBox, { backgroundColor: "#1d4ed8" }]}>
-              <Text style={hubStyles.emoji}>•</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={hubStyles.title}>Solo flow</Text>
-              <Text style={hubStyles.blurb}>Connect coloured pairs · path only crosses itself per colour.</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={hubStyles.card}
-          activeOpacity={0.92}
-          onPress={() => router.push("/puzzle/pipe")}
-        >
-          <View style={hubStyles.row}>
-            <View style={[hubStyles.emojiBox, { backgroundColor: "#0369a1" }]}>
-              <Text style={hubStyles.emoji}>⊕</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={hubStyles.title}>Solo pipes</Text>
-              <Text style={hubStyles.blurb}>Tap to rotate until start links both goals.</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={hubStyles.card}
-          activeOpacity={0.92}
-          onPress={() => router.push("/puzzle/ice")}
-        >
-          <View style={hubStyles.row}>
-            <View style={[hubStyles.emojiBox, { backgroundColor: "#7c3aed" }]}>
-              <Text style={hubStyles.emoji}>❄️</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={hubStyles.title}>Solo ice maze</Text>
-              <Text style={hubStyles.blurb}>Slides until walls · reach the glowing goal.</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-
-        <Text style={[hubStyles.h1, { fontSize: 18, marginTop: 24, marginBottom: 14 }]}>HTML5 arcade</Text>
         {ARCADE_ITEMS.map((g) => (
           <TouchableOpacity
             key={g.play}
@@ -273,7 +152,7 @@ export default function ArcadeRoute() {
     return (
       <PhaserInlineWebView
         html={item.html}
-        onBack={() => router.replace("/Arcade/arcade")}
+        onBack={() => router.replace("/home")}
         statusTint="#00ffaa"
         onBridgeMessage={onBridgeMessage}
         onLeaderboard={

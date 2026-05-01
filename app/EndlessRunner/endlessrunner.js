@@ -2,6 +2,8 @@ import {
   PlayEntitlementSplash,
   useConsumePlayEntitlement,
 } from "@/lib/useConsumePlayEntitlement";
+import { softAcceptChallenge } from "@/lib/challenges";
+import { Nexus } from "@/constants/theme";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { getAuth } from "firebase/auth";
 import {
@@ -12,41 +14,71 @@ import {
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
-import { useEffect, useRef, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
+  Dimensions,
   Easing,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { db } from "../../constants/firebase";
-import { softAcceptChallenge } from "@/lib/challenges";
 import { getISOWeekKey } from "../../lib/weekKey";
 
 const auth = getAuth();
 
-const PLAYER_SIZE = 40;
-const GAME_HEIGHT = 360;
-const GAME_WIDTH = 480;
-const GROUND_Y = 310;
-const JUMP_HEIGHT = 170;
-const OBSTACLE_WIDTH = 22;
-const OBSTACLE_HEIGHT = 35;
-const OBSTACLE_SPEED = 5;
-const PLAYER_X = 60;
+function buildRunnerLayout(screenWidth) {
+  const fallback =
+    Dimensions.get("window").width ||
+    Dimensions.get("screen").width ||
+    393;
+  const raw =
+    typeof screenWidth === "number" && screenWidth > 120
+      ? screenWidth
+      : fallback;
 
-const COIN_SIZE = 30;
-const COIN_SPEED = 4;
+  /** Stage ~phone width with padding — large on tablet but capped */
+  const GAME_WIDTH = Math.min(Math.max(raw - 32, 300), Math.min(580, raw - 20));
+  const GAME_HEIGHT = Math.round(GAME_WIDTH * 0.64);
+  const GROUND_Y = GAME_HEIGHT - Math.max(54, Math.round(GAME_WIDTH * 0.1));
+  const PLAYER_SIZE = Math.max(34, Math.round(GAME_WIDTH * 0.092));
+  const PLAYER_X = Math.round(GAME_WIDTH * 0.12);
+  const OBSTACLE_WIDTH = Math.max(18, Math.round(GAME_WIDTH * 0.048));
+  const OBSTACLE_HEIGHT = Math.max(28, Math.round(GAME_WIDTH * 0.074));
+  const JUMP_HEIGHT = Math.round(GAME_WIDTH * 0.39);
+  const OBSTACLE_SPEED = Math.max(4.2, GAME_WIDTH / 96);
+  const COIN_SPEED = Math.max(3.2, GAME_WIDTH / 120);
+  const COIN_SIZE = Math.max(26, Math.round(GAME_WIDTH * 0.07));
+  return {
+    GAME_WIDTH,
+    GAME_HEIGHT,
+    GROUND_Y,
+    PLAYER_SIZE,
+    PLAYER_X,
+    OBSTACLE_WIDTH,
+    OBSTACLE_HEIGHT,
+    OBSTACLE_SPEED,
+    COIN_SPEED,
+    JUMP_HEIGHT,
+    COIN_SIZE,
+  };
+}
+
 const COIN_SPAWN_CHANCE = 0.75;
 const WIN_POINTS = 8;
 
 function EndlessRunnerInner() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  /** Pin layout for one session so physics + Animated.Value stay in sync */
+  const L = useMemo(() => buildRunnerLayout(Dimensions.get("window").width), []);
+
   const sp = useLocalSearchParams();
   const challengeId = Array.isArray(sp.challengeId) ? sp.challengeId[0] : sp.challengeId;
   const challengeTarget = Array.isArray(sp.challengeTarget)
@@ -66,8 +98,10 @@ function EndlessRunnerInner() {
   const [obstacles, setObstacles] = useState([]);
   const [coins, setCoins] = useState([]);
   const [message, setMessage] = useState("");
+  const [showLevelHelp, setShowLevelHelp] = useState(false);
 
-  const playerY = useRef(new Animated.Value(GROUND_Y - PLAYER_SIZE)).current;
+  const groundedTop = L.GROUND_Y - L.PLAYER_SIZE;
+  const playerY = useRef(new Animated.Value(groundedTop)).current;
   const jumpingRef = useRef(false);
   const savedRef = useRef(false);
   const scoreRef = useRef(0);
@@ -84,9 +118,16 @@ function EndlessRunnerInner() {
   const showMessage = (text) => {
     setMessage(text);
 
-    setTimeout(() => {
-      setMessage("");
-    }, 1200);
+    setTimeout(() => setMessage(""), 1400);
+  };
+
+  /** Back without leaving orphaned intervals */
+  const goBack = () => {
+    runningRef.current = false;
+    setRunning(false);
+    setPaused(false);
+    if (router.canGoBack()) router.back();
+    else router.replace("/home");
   };
 
   const saveScoreToFirebase = async (finalScore, finalPoints, finalLevel) => {
@@ -190,10 +231,14 @@ function EndlessRunnerInner() {
     runningRef.current = running;
   }, [running]);
 
+  const LRef = useRef(L);
+  LRef.current = L;
+
   useEffect(() => {
     if (!running || paused) return;
 
     const interval = setInterval(() => {
+      const { GAME_WIDTH } = LRef.current;
       setObstacles((prev) => [
         ...prev,
         {
@@ -210,14 +255,15 @@ function EndlessRunnerInner() {
     if (!running || paused) return;
 
     const interval = setInterval(() => {
+      const { GAME_WIDTH, GROUND_Y, PLAYER_SIZE } = LRef.current;
       const shouldSpawnCoin = Math.random() < COIN_SPAWN_CHANCE;
 
       if (shouldSpawnCoin) {
         const possibleHeights = [
           GROUND_Y - PLAYER_SIZE - 5,
-          GROUND_Y - PLAYER_SIZE - 20,
-          GROUND_Y - PLAYER_SIZE - 45,
-          GROUND_Y - PLAYER_SIZE - 70,
+          GROUND_Y - PLAYER_SIZE - 22,
+          GROUND_Y - PLAYER_SIZE - 48,
+          GROUND_Y - PLAYER_SIZE - 76,
         ];
 
         const randomHeight =
@@ -241,28 +287,32 @@ function EndlessRunnerInner() {
     if (!running || paused) return;
 
     const interval = setInterval(() => {
-      const py = Number(playerY.__getValue());
+      const py =
+        typeof playerY.__getValue === "function"
+          ? Number(playerY.__getValue())
+          : Number(playerY._value ?? 0);
+      const lx = LRef.current;
 
       setObstacles((prev) => {
         const moved = prev.map((obstacle) => ({
           ...obstacle,
-          x: obstacle.x - OBSTACLE_SPEED,
+          x: obstacle.x - lx.OBSTACLE_SPEED,
         }));
 
         const visible = moved.filter(
-          (obstacle) => obstacle.x + OBSTACLE_WIDTH > 0
+          (obstacle) => obstacle.x + lx.OBSTACLE_WIDTH > 0
         );
 
         const collided = visible.some((obstacle) => {
           const hitX =
-            PLAYER_X + 8 < obstacle.x + OBSTACLE_WIDTH - 8 &&
-            PLAYER_X + PLAYER_SIZE - 8 > obstacle.x + 8;
+            lx.PLAYER_X + 8 < obstacle.x + lx.OBSTACLE_WIDTH - 8 &&
+            lx.PLAYER_X + lx.PLAYER_SIZE - 8 > obstacle.x + 8;
 
-          const obstacleTop = GROUND_Y - OBSTACLE_HEIGHT;
+          const obstacleTop = lx.GROUND_Y - lx.OBSTACLE_HEIGHT;
 
           const hitY =
-            py + PLAYER_SIZE - 8 > obstacleTop &&
-            py + 10 < GROUND_Y;
+            py + lx.PLAYER_SIZE - 8 > obstacleTop &&
+            py + 10 < lx.GROUND_Y;
 
           return hitX && hitY;
         });
@@ -278,21 +328,21 @@ function EndlessRunnerInner() {
       setCoins((prev) => {
         const moved = prev.map((coin) => ({
           ...coin,
-          x: coin.x - COIN_SPEED,
+          x: coin.x - lx.COIN_SPEED,
         }));
 
-        const visible = moved.filter((coin) => coin.x + COIN_SIZE > 0);
+        const visible = moved.filter((coin) => coin.x + lx.COIN_SIZE > 0);
 
         const remainingCoins = [];
 
         visible.forEach((coin) => {
           const hitX =
-            PLAYER_X - 8 < coin.x + COIN_SIZE &&
-            PLAYER_X + PLAYER_SIZE + 8 > coin.x;
+            lx.PLAYER_X - 8 < coin.x + lx.COIN_SIZE &&
+            lx.PLAYER_X + lx.PLAYER_SIZE + 8 > coin.x;
 
           const hitY =
-            py - 8 < coin.y + COIN_SIZE &&
-            py + PLAYER_SIZE + 8 > coin.y;
+            py - 8 < coin.y + lx.COIN_SIZE &&
+            py + lx.PLAYER_SIZE + 8 > coin.y;
 
           if (hitX && hitY) {
             setPoints((prevPoints) => {
@@ -302,7 +352,7 @@ function EndlessRunnerInner() {
 
               if (newLevel !== oldLevel) {
                 setLevel(newLevel);
-                showMessage(`Level ${newLevel} reached`);
+                showMessage(`Level ${newLevel}`);
               } else {
                 showMessage("+1 point");
               }
@@ -327,23 +377,25 @@ function EndlessRunnerInner() {
     }, 30);
 
     return () => clearInterval(interval);
-  }, [running, paused, points, level]);
+  }, [running, paused, points, level, playerY]);
 
   const jump = () => {
     if (jumpingRef.current || !running || paused) return;
 
     jumpingRef.current = true;
+    const lx = LRef.current;
+    const grounded = lx.GROUND_Y - lx.PLAYER_SIZE;
 
     Animated.sequence([
       Animated.timing(playerY, {
-        toValue: GROUND_Y - PLAYER_SIZE - JUMP_HEIGHT,
-        duration: 140,
+        toValue: grounded - lx.JUMP_HEIGHT,
+        duration: 150,
         easing: Easing.out(Easing.quad),
         useNativeDriver: false,
       }),
       Animated.timing(playerY, {
-        toValue: GROUND_Y - PLAYER_SIZE,
-        duration: 300,
+        toValue: grounded,
+        duration: 320,
         easing: Easing.in(Easing.quad),
         useNativeDriver: false,
       }),
@@ -354,6 +406,8 @@ function EndlessRunnerInner() {
 
   const startGame = () => {
     challengeLoggedRef.current = false;
+    const lx = LRef.current;
+    const grounded = lx.GROUND_Y - lx.PLAYER_SIZE;
     setStarted(true);
     setRunning(true);
     setPaused(false);
@@ -367,7 +421,7 @@ function EndlessRunnerInner() {
     savedRef.current = false;
     scoreRef.current = 0;
     runningRef.current = true;
-    playerY.setValue(GROUND_Y - PLAYER_SIZE);
+    playerY.setValue(grounded);
     jumpingRef.current = false;
   };
 
@@ -382,21 +436,7 @@ function EndlessRunnerInner() {
   };
 
   const resetGame = () => {
-    setStarted(true);
-    setRunning(true);
-    setPaused(false);
-    setWon(false);
-    setScore(0);
-    setPoints(0);
-    setLevel(1);
-    setObstacles([]);
-    setCoins([]);
-    setMessage("");
-    savedRef.current = false;
-    scoreRef.current = 0;
-    runningRef.current = true;
-    playerY.setValue(GROUND_Y - PLAYER_SIZE);
-    jumpingRef.current = false;
+    startGame();
   };
 
   useEffect(() => {
@@ -411,63 +451,63 @@ function EndlessRunnerInner() {
       window.addEventListener("keydown", onKey);
       return () => window.removeEventListener("keydown", onKey);
     }
+    return undefined;
   }, [running, paused]);
 
+  const statusLabel =
+    !started ? "READY" : running ? (paused ? "PAUSED" : "RUNNING") : won ? "YOU WIN" : "GAME OVER";
+
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
-      <View style={styles.container}>
-        <View style={styles.card}>
-          <Text style={styles.title}>Endless Runner</Text>
-          <Text style={styles.subtitle}>
-            Tap the game area or press Space to jump
-          </Text>
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoBox}>
-              <Text style={styles.infoLabel}>Score</Text>
-              <Text style={styles.infoValue}>{score}</Text>
-            </View>
-
-            <View style={styles.infoBox}>
-              <Text style={styles.infoLabel}>Points</Text>
-              <Text style={styles.infoValue}>{points}</Text>
-            </View>
-
-            <View style={styles.infoBox}>
-              <Text style={styles.infoLabel}>Level</Text>
-              <Text style={styles.infoValue}>{level}</Text>
-            </View>
-
-            <View style={styles.infoBox}>
-              <Text style={styles.infoLabel}>Status</Text>
-              <Text style={styles.infoValue}>
-                {!started
-                  ? "Ready"
-                  : running
-                  ? paused
-                    ? "Paused"
-                    : "Running"
-                  : won
-                  ? "You Win"
-                  : "Game Over"}
-              </Text>
-            </View>
+    <View style={styles.screen}>
+      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 12) }]}>
+        <TouchableOpacity onPress={goBack} hitSlop={12} style={styles.hit}>
+          <Ionicons name="chevron-back" size={34} color={Nexus.green} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.topTitle}>Endless Runner</Text>
+          <Text style={styles.topSub}>tap stage · jump spikes · collect coins</Text>
+        </View>
+        {started && (
+          <View style={{ alignItems: "flex-end", minWidth: 84 }}>
+            <Text style={[styles.miniStat, styles.mono]}>{score}</Text>
+            <Text style={styles.miniLabel}>DIST</Text>
           </View>
+        )}
+      </View>
 
-          <TouchableOpacity
-            style={styles.gameArea}
-            onPress={jump}
-            activeOpacity={1}
+      <View style={[styles.stageWrap]}>
+        <TouchableOpacity style={styles.gameArea} activeOpacity={1} onPress={jump}>
+          <View
+            style={[styles.stageInner, { width: L.GAME_WIDTH, height: L.GAME_HEIGHT }]}
           >
-            <View style={styles.sky} />
-            <View style={styles.sun} />
-            <View style={[styles.ground, { top: GROUND_Y }]} />
+            <View style={[styles.sky, { height: L.GROUND_Y }]} />
+            <View pointerEvents="none" style={[styles.gradientBand, styles.bandLow]} />
+            <View pointerEvents="none" style={[styles.gradientBand, styles.bandMid]} />
+            <View pointerEvents="none" style={[styles.sun]} />
+            <View
+              pointerEvents="none"
+              style={[
+                styles.ground,
+                { top: L.GROUND_Y, height: L.GAME_HEIGHT - L.GROUND_Y },
+              ]}
+            />
+            <View
+              pointerEvents="none"
+              style={[
+                styles.groundGrass,
+                { top: L.GROUND_Y + 10, height: Math.max(6, L.PLAYER_SIZE * 0.2) },
+              ]}
+            />
 
             <Animated.View
+              pointerEvents="none"
               style={[
                 styles.player,
                 {
                   top: playerY,
+                  left: L.PLAYER_X,
+                  width: L.PLAYER_SIZE,
+                  height: L.PLAYER_SIZE,
                 },
               ]}
             />
@@ -475,11 +515,14 @@ function EndlessRunnerInner() {
             {obstacles.map((obstacle) => (
               <View
                 key={obstacle.id}
+                pointerEvents="none"
                 style={[
                   styles.obstacle,
                   {
                     left: obstacle.x,
-                    top: GROUND_Y - OBSTACLE_HEIGHT,
+                    top: L.GROUND_Y - L.OBSTACLE_HEIGHT,
+                    width: L.OBSTACLE_WIDTH,
+                    height: L.OBSTACLE_HEIGHT,
                   },
                 ]}
               />
@@ -488,388 +531,426 @@ function EndlessRunnerInner() {
             {coins.map((coin) => (
               <View
                 key={coin.id}
+                pointerEvents="none"
                 style={[
                   styles.coin,
                   {
                     left: coin.x,
                     top: coin.y,
+                    width: L.COIN_SIZE,
+                    height: L.COIN_SIZE,
+                    borderRadius: L.COIN_SIZE / 2,
                   },
                 ]}
               >
-                <Text style={styles.coinText}>P</Text>
+                <Text style={styles.coinText}>◆</Text>
               </View>
             ))}
 
-            {message ? (
-              <View style={styles.messageBox}>
+            {!!message ? (
+              <View style={styles.messageBox} pointerEvents="none">
                 <Text style={styles.messageText}>{message}</Text>
               </View>
             ) : null}
 
-            {!started && (
-              <View style={styles.overlay}>
-                <Text style={styles.overlayTitle}>Ready to Play</Text>
-                <Text style={styles.overlayText}>Press Play to begin</Text>
-              </View>
-            )}
-
-            {paused && running && (
-              <View style={styles.overlay}>
-                <Text style={styles.overlayTitle}>Paused</Text>
-                <Text style={styles.overlayText}>Press Resume to continue</Text>
-              </View>
-            )}
-
-            {!running && started && won && (
-              <View style={styles.overlay}>
-                <Text style={styles.overlayTitle}>You Win!</Text>
-                <Text style={styles.overlayText}>You completed level 5</Text>
-                <Text style={styles.overlayText}>Final Score: {score}</Text>
-                <Text style={styles.overlayText}>Points Collected: {points}</Text>
-                <Text style={styles.overlayText}>Level Reached: {level}</Text>
-              </View>
-            )}
-
-            {!running && started && !won && (
-              <View style={styles.overlay}>
-                <Text style={styles.overlayTitle}>Game Over</Text>
-                <Text style={styles.overlayText}>Final Score: {score}</Text>
-                <Text style={styles.overlayText}>Points Collected: {points}</Text>
-                <Text style={styles.overlayText}>Level Reached: {level}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.levelInfoBox}>
-            <Text style={styles.levelInfoTitle}>Level Targets</Text>
-            <Text style={styles.levelInfoText}>Level 1 = 0 to 1 points</Text>
-            <Text style={styles.levelInfoText}>Level 2 = 2 to 3 points</Text>
-            <Text style={styles.levelInfoText}>Level 3 = 4 to 5 points</Text>
-            <Text style={styles.levelInfoText}>Level 4 = 6 to 7 points</Text>
-            <Text style={styles.levelInfoText}>Level 5 = 8+ points</Text>
-          </View>
-
-          <View style={styles.buttonColumn}>
             {!started ? (
-              <TouchableOpacity style={styles.startButton} onPress={startGame}>
-                <Text style={styles.buttonText}>Play</Text>
-              </TouchableOpacity>
-            ) : running ? (
-              paused ? (
-                <TouchableOpacity style={styles.pauseButton} onPress={resumeGame}>
-                  <Text style={styles.buttonText}>Resume</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity style={styles.pauseButton} onPress={pauseGame}>
-                  <Text style={styles.buttonText}>Pause</Text>
-                </TouchableOpacity>
-              )
-            ) : (
-              <TouchableOpacity style={styles.startButton} onPress={resetGame}>
-                <Text style={styles.buttonText}>Play Again</Text>
-              </TouchableOpacity>
-            )}
+              <View style={styles.overlay} pointerEvents="none">
+                <Text style={styles.overlayEyebrow}>READY</Text>
+                <Text style={styles.overlayTitle}>Neon Sprint</Text>
+                <Text style={styles.overlayText}>Tap below to PLAY</Text>
+              </View>
+            ) : null}
 
-            <TouchableOpacity style={styles.restartButton} onPress={resetGame}>
-              <Text style={styles.buttonText}>Restart Game</Text>
-            </TouchableOpacity>
+            {paused && running ? (
+              <View style={styles.overlay} pointerEvents="none">
+                <Text style={styles.overlayEyebrow}>PAUSED</Text>
+                <Text style={styles.overlayTitle}>Frozen</Text>
+                <Text style={styles.overlayText}>Resume when ready</Text>
+              </View>
+            ) : null}
 
-            <TouchableOpacity
-              style={styles.leaderboardButton}
-              onPress={() =>
-                router.push("/Leaderboard/leaderboard?game=endlessrunner")
-              }
-            >
-              <Text style={styles.buttonText}>View Leaderboard</Text>
-            </TouchableOpacity>
+            {!running && started && won ? (
+              <View style={styles.overlay} pointerEvents="none">
+                <Text style={styles.overlayEyebrow}>WIN</Text>
+                <Text style={styles.overlayTitle}>You cleared Level 5</Text>
+                <Text style={styles.overlayText}>{score} dist · {points} coins</Text>
+              </View>
+            ) : null}
 
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.push("/home")}
-            >
-              <Text style={styles.buttonText}>Back to Main Menu</Text>
-            </TouchableOpacity>
+            {!running && started && !won ? (
+              <View style={styles.overlay} pointerEvents="none">
+                <Text style={styles.overlayEyebrow}>OVER</Text>
+                <Text style={styles.overlayTitle}>Impact</Text>
+                <Text style={styles.overlayText}>{score} dist · {points} coins · Lvl {level}</Text>
+              </View>
+            ) : null}
           </View>
-
-          <Text style={styles.tip}>
-            Mobile: tap inside the game area to jump • Web: Space or Up Arrow
-          </Text>
-        </View>
+        </TouchableOpacity>
       </View>
-    </ScrollView>
+
+      <View style={[styles.controls, { paddingBottom: Math.max(insets.bottom + 10, 20) }]}>
+        <View style={styles.statsRow}>
+          <View style={styles.statChip}>
+            <Text style={styles.statLabel}>SCORE</Text>
+            <Text style={styles.statVal}>{score}</Text>
+          </View>
+          <View style={styles.statChip}>
+            <Text style={styles.statLabel}>COINS</Text>
+            <Text style={styles.statVal}>{points}</Text>
+          </View>
+          <View style={[styles.statChip, styles.statChipAccent]}>
+            <Text style={styles.statLabel}>LEVEL</Text>
+            <Text style={[styles.statVal, { color: Nexus.green }]}>{level}</Text>
+          </View>
+          <View style={styles.statChip}>
+            <Text style={styles.statLabel}>MODE</Text>
+            <Text style={[styles.statVal, styles.monoXs]}>{statusLabel}</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={() => setShowLevelHelp((x) => !x)}
+          style={styles.helpBar}
+          activeOpacity={0.82}
+        >
+          <Text style={styles.helpBarT}>{showLevelHelp ? " Hide level ladder " : " How levels work "}</Text>
+          <Ionicons name={showLevelHelp ? "chevron-up" : "chevron-down"} size={16} color={Nexus.green} />
+        </TouchableOpacity>
+        {showLevelHelp ? (
+          <View style={styles.helpBox}>
+            <Text style={styles.helpLine}>Lvl 2 at 2 coins · Lvl 5 at 8 · win condition = 8 coins</Text>
+            <Text style={styles.helpLine}>Speed scales with obstacle spawn — dodge red blocks</Text>
+          </View>
+        ) : null}
+
+        <View style={styles.buttonsRow}>
+          {!started ? (
+            <TouchableOpacity style={styles.btnPrimary} onPress={startGame}>
+              <Text style={styles.btnPrimaryT}>Play</Text>
+            </TouchableOpacity>
+          ) : running ? (
+            paused ? (
+              <TouchableOpacity style={styles.btnWarn} onPress={resumeGame}>
+                <Text style={styles.btnT}>Resume</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.btnWarn} onPress={pauseGame}>
+                <Text style={styles.btnT}>Pause</Text>
+              </TouchableOpacity>
+            )
+          ) : (
+            <TouchableOpacity style={styles.btnPrimary} onPress={resetGame}>
+              <Text style={styles.btnPrimaryT}>Again</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.btnGhost} onPress={resetGame}>
+            <Text style={styles.btnGhostT}>Restart</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.row2}>
+          <TouchableOpacity
+            style={styles.btnSecondary}
+            onPress={() =>
+              router.push("/Leaderboard/leaderboard?game=endlessrunner")
+            }
+          >
+            <Ionicons name="trophy-outline" size={18} color="#0a1210" />
+            <Text style={styles.btnSecondaryT}>Board</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.btnSecondaryMuted} onPress={() => router.push("/home")}>
+            <Text style={styles.btnSecondaryMutedT}>Arena</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.tip}>
+          {Platform.OS === "web"
+            ? "Web: Space · Up ↑ — Mobile: tap the stage anywhere"
+            : "Tap the stage anywhere to jump"}
+        </Text>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flexGrow: 1,
-  },
-
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: "#eaf4ff",
+    backgroundColor: Nexus.bg,
+  },
+  mono: { fontVariant: ["tabular-nums"], color: Nexus.green },
+  monoXs: { fontSize: 10, fontVariant: ["tabular-nums"] },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+    gap: 6,
+    backgroundColor: Nexus.bgElevated,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Nexus.borderDim,
+  },
+  hit: { padding: 4 },
+  topTitle: { color: Nexus.text, fontSize: 22, fontWeight: "900" },
+  topSub: { color: Nexus.textMuted, marginTop: 4, fontSize: 13 },
+  miniStat: { fontWeight: "900", fontSize: 18 },
+  miniLabel: { color: Nexus.textMuted, fontSize: 10, marginTop: 2 },
+  stageWrap: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingVertical: 8,
+    minHeight: 220,
+    alignItems: "center",
+    paddingHorizontal: 12,
+  },
+  stageInner: {
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Nexus.border,
+    overflow: "hidden",
+    alignSelf: "center",
+    position: "relative",
+    elevation: Platform.OS === "android" ? 6 : undefined,
+    shadowColor: Nexus.green,
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    backgroundColor: "#150c24",
+  },
+  gameArea: {
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
   },
-
-  card: {
-    width: "100%",
-    maxWidth: 560,
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 20,
-    alignItems: "center",
-    elevation: 4,
-  },
-
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#222",
-    marginBottom: 6,
-    textAlign: "center",
-  },
-
-  subtitle: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-    marginBottom: 18,
-  },
-
-  infoRow: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 10,
-    marginBottom: 18,
-    flexWrap: "wrap",
-  },
-
-  infoBox: {
-    flex: 1,
-    minWidth: 90,
-    backgroundColor: "#f8f9fc",
-    borderRadius: 12,
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-
-  infoLabel: {
-    fontSize: 13,
-    color: "#666",
-    marginBottom: 4,
-  },
-
-  infoValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#222",
-  },
-
-  gameArea: {
-    width: "100%",
-    maxWidth: GAME_WIDTH,
-    height: GAME_HEIGHT,
-    backgroundColor: "#87ceeb",
-    borderColor: "#333",
-    borderWidth: 2,
-    borderRadius: 12,
-    position: "relative",
-    overflow: "hidden",
-    marginBottom: 18,
-  },
-
   sky: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    height: GROUND_Y,
-    backgroundColor: "#87ceeb",
+    backgroundColor: "#1b1040",
   },
-
+  gradientBand: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    opacity: 0.42,
+    borderBottomLeftRadius: 60,
+    borderBottomRightRadius: 60,
+  },
+  bandLow: {
+    top: "42%",
+    height: "42%",
+    backgroundColor: "#2d1466",
+    transform: [{ scaleX: 1.06 }],
+  },
+  bandMid: {
+    top: "12%",
+    height: "38%",
+    backgroundColor: "#3b1fa3",
+    transform: [{ scaleX: 1.04 }],
+    opacity: 0.35,
+  },
   sun: {
     position: "absolute",
-    top: 25,
-    right: 30,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#ffd54f",
+    top: 34,
+    right: "10%",
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: "rgba(255, 230, 120, 0.35)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,210,0.45)",
+    shadowColor: "#ffe066",
+    shadowOpacity: 0.45,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 0 },
   },
-
   ground: {
     position: "absolute",
     width: "100%",
-    height: GAME_HEIGHT - GROUND_Y,
-    backgroundColor: "#8bc34a",
-    borderTopWidth: 3,
-    borderTopColor: "#5d4037",
+    backgroundColor: "#08231a",
+    borderTopWidth: 4,
+    borderTopColor: "#0bff9c66",
+    paddingTop: 0,
   },
-
+  groundGrass: {
+    position: "absolute",
+    left: "4%",
+    right: "4%",
+    backgroundColor: "rgba(17,212,146,0.22)",
+    borderRadius: 4,
+  },
   player: {
     position: "absolute",
-    left: PLAYER_X,
-    width: PLAYER_SIZE,
-    height: PLAYER_SIZE,
-    backgroundColor: "#4CAF50",
-    borderRadius: 6,
+    borderRadius: 10,
+    backgroundColor: "#00ff8866",
     borderWidth: 2,
-    borderColor: "#fff",
+    borderColor: Nexus.green,
+    shadowColor: Nexus.green,
+    shadowOpacity: 0.65,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-
   obstacle: {
     position: "absolute",
-    width: OBSTACLE_WIDTH,
-    height: OBSTACLE_HEIGHT,
-    backgroundColor: "#E53935",
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: "#fff",
+    borderRadius: 6,
+    backgroundColor: "#ff3b5cff",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#ffc4d244",
+    shadowColor: "#ff3366",
+    shadowOpacity: 0.85,
+    shadowRadius: Platform.OS === "ios" ? 8 : undefined,
+    elevation: Platform.OS === "android" ? 3 : undefined,
   },
-
   coin: {
     position: "absolute",
-    width: COIN_SIZE,
-    height: COIN_SIZE,
-    borderRadius: COIN_SIZE / 2,
-    backgroundColor: "#ffd700",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#fff2a8",
+    backgroundColor: "rgba(250,215,92,1)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,250,215,1)",
+    shadowColor: "#ffd447",
+    shadowOpacity: 0.9,
+    shadowRadius: Platform.OS === "ios" ? 6 : undefined,
+    elevation: Platform.OS === "android" ? 2 : undefined,
   },
-
-  coinText: {
-    fontSize: 11,
-    fontWeight: "bold",
-    color: "#7a5a00",
-  },
-
+  coinText: { fontWeight: "900", color: "#4a3700", fontSize: 12 },
   messageBox: {
     position: "absolute",
-    top: 14,
+    top: 16,
     alignSelf: "center",
-    backgroundColor: "rgba(0,0,0,0.35)",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
+    backgroundColor: "rgba(12,22,38,0.72)",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Nexus.border,
   },
-
-  messageText: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-
+  messageText: { color: "#eafcfa", fontSize: 13, fontWeight: "700" },
   overlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.25)",
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(5,10,18,0.42)",
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 16,
   },
-
+  overlayEyebrow: { color: Nexus.green, fontWeight: "900", fontSize: 12, letterSpacing: 4 },
   overlayTitle: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "800",
-    marginBottom: 8,
+    marginTop: 8,
+    color: "#fdfcff",
+    fontSize: 28,
+    fontWeight: "900",
+    textAlign: "center",
   },
-
   overlayText: {
-    color: "#fff",
-    fontSize: 16,
-    marginBottom: 4,
-  },
-
-  levelInfoBox: {
-    width: "100%",
-    backgroundColor: "#f8f9fc",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-  },
-
-  levelInfoTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#333",
-    marginBottom: 8,
+    marginTop: 12,
+    color: Nexus.textMuted,
+    fontSize: 14,
     textAlign: "center",
-  },
-
-  levelInfoText: {
-    fontSize: 13,
-    color: "#555",
-    textAlign: "center",
-    marginBottom: 2,
-  },
-
-  buttonColumn: {
-    width: "100%",
-  },
-
-  startButton: {
-    width: "100%",
-    backgroundColor: "#007bff",
-    paddingVertical: 13,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-
-  pauseButton: {
-    width: "100%",
-    backgroundColor: "#f0ad4e",
-    paddingVertical: 13,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-
-  restartButton: {
-    width: "100%",
-    backgroundColor: "#6c757d",
-    paddingVertical: 13,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-
-  leaderboardButton: {
-    width: "100%",
-    backgroundColor: "#28a745",
-    paddingVertical: 13,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-
-  backButton: {
-    width: "100%",
-    backgroundColor: "#ff4d4f",
-    paddingVertical: 13,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-
-  buttonText: {
-    color: "#fff",
-    fontSize: 15,
     fontWeight: "600",
+    lineHeight: 20,
   },
-
+  controls: {
+    paddingHorizontal: 14,
+    backgroundColor: Nexus.bgElevated,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Nexus.borderDim,
+    gap: 10,
+    paddingTop: 12,
+  },
+  statsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  statChip: {
+    flex: 1,
+    minWidth: 72,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Nexus.borderDim,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: "center",
+  },
+  statChipAccent: { borderColor: Nexus.border },
+  statLabel: { color: Nexus.textMuted, fontSize: 10, marginBottom: 4, fontWeight: "700" },
+  statVal: { color: Nexus.text, fontSize: 18, fontWeight: "900" },
+  helpBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.035)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Nexus.borderDim,
+  },
+  helpBarT: { color: Nexus.green, fontWeight: "700", fontSize: 13 },
+  helpBox: {
+    paddingHorizontal: 8,
+    paddingBottom: 2,
+    gap: 6,
+    marginTop: -2,
+  },
+  helpLine: { color: Nexus.textMuted, fontSize: 12, lineHeight: 18 },
+  buttonsRow: { flexDirection: "row", gap: 10, marginTop: 4 },
+  row2: { flexDirection: "row", gap: 10, marginTop: 4 },
+  btnPrimary: {
+    flex: 1,
+    backgroundColor: Nexus.green,
+    borderRadius: 12,
+    paddingVertical: 15,
+    alignItems: "center",
+  },
+  btnPrimaryT: { color: "#06130e", fontWeight: "900", fontSize: 16 },
+  btnWarn: {
+    flex: 1,
+    backgroundColor: "#c98a1dff",
+    borderRadius: 12,
+    paddingVertical: 15,
+    alignItems: "center",
+  },
+  btnT: { color: "#1a1405", fontWeight: "900", fontSize: 16 },
+  btnGhost: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Nexus.border,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 15,
+    backgroundColor: "transparent",
+  },
+  btnGhostT: { color: Nexus.green, fontWeight: "900", fontSize: 16 },
+  btnSecondary: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 13,
+    borderRadius: 12,
+    backgroundColor: Nexus.green,
+  },
+  btnSecondaryT: { color: "#08160f", fontWeight: "800", fontSize: 15 },
+  btnSecondaryMuted: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 13,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Nexus.borderDim,
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  btnSecondaryMutedT: { color: Nexus.textMuted, fontWeight: "800", fontSize: 15 },
   tip: {
-    color: "#666",
-    fontSize: 13,
-    marginTop: 14,
+    color: Nexus.textMuted,
+    fontSize: 12,
     textAlign: "center",
+    marginTop: 2,
+    lineHeight: 18,
+    marginBottom: 4,
   },
 });
 

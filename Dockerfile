@@ -1,7 +1,6 @@
 # Production web (Expo static export + scripts/render-serve.js).
-# Render "Native Node" often runs `node expo-router/entry` from package.json "main";
-# Expo sets main to resolve via node_modules — not a filesystem path → crash.
-# Docker uses CMD below so startup is always correct.
+# Render start command MUST be node scripts/render-serve.js (see CMD below). Do NOT run
+# `node expo-router/entry`; package.json main is for Expo/Metro bundler only.
 FROM node:20-bookworm-slim
 
 WORKDIR /app

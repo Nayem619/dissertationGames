@@ -20,6 +20,21 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { auth } from "../constants/firebase";
+import { PHASER_ARCADE_ROWS } from "./Arcade/arcadeCatalog";
+
+const PHASER_ACCENT = {
+  bg: "rgba(124, 58, 237, 0.08)",
+  border: "rgba(0, 255, 136, 0.32)",
+};
+
+const PHASER_HOME_CARDS = PHASER_ARCADE_ROWS.map((g) => ({
+  id: `arcade_${g.play}`,
+  name: `${g.title} · HTML5`,
+  icon: g.emoji,
+  href: { pathname: "/Arcade/arcade", params: { play: g.play } },
+  route: null,
+  accent: { ...PHASER_ACCENT, iconBg: g.color },
+}));
 
 const GAMES = [
   {
@@ -34,6 +49,43 @@ const GAMES = [
       iconBg: "#0e7490",
     },
   },
+  {
+    id: "puzzle-flow",
+    name: "FLOW PUZZLE (SOLO)",
+    icon: "⚫",
+    href: { pathname: "/puzzle/flow" },
+    route: null,
+    accent: {
+      bg: "rgba(29,78,216,0.12)",
+      border: "rgba(96,165,250,0.45)",
+      iconBg: "#1d4ed8",
+    },
+  },
+  {
+    id: "puzzle-pipe",
+    name: "PIPE PUZZLE (SOLO)",
+    icon: "⊕",
+    href: { pathname: "/puzzle/pipe" },
+    route: null,
+    accent: {
+      bg: "rgba(3,105,161,0.12)",
+      border: "rgba(56,189,248,0.45)",
+      iconBg: "#0369a1",
+    },
+  },
+  {
+    id: "puzzle-ice",
+    name: "ICE SLIDE (SOLO)",
+    icon: "❄️",
+    href: { pathname: "/puzzle/ice" },
+    route: null,
+    accent: {
+      bg: "rgba(124,58,237,0.12)",
+      border: "rgba(196,181,253,0.42)",
+      iconBg: "#7c3aed",
+    },
+  },
+  ...PHASER_HOME_CARDS,
   {
     id: "tictactoe",
     name: "TIC TAC TOE",
@@ -56,17 +108,6 @@ const GAMES = [
     accent: { bg: "rgba(0, 212, 255, 0.12)", border: "rgba(0, 212, 255, 0.45)", iconBg: "#0099cc" },
   },
   {
-    id: "arcade",
-    name: "PHASER ARCADE",
-    icon: "🕹️",
-    route: "/Arcade/arcade",
-    accent: {
-      bg: "rgba(0, 255, 136, 0.08)",
-      border: "rgba(255, 0, 255, 0.35)",
-      iconBg: "#7c3aed",
-    },
-  },
-  {
     id: "social",
     name: "ARENA SOCIAL",
     icon: "🧑‍🚀",
@@ -80,7 +121,7 @@ const GAMES = [
   {
     id: "online",
     name: "ONLINE TIC-TAC-TOE",
-    icon: "🔗",
+    icon: "🌐",
     route: "/multiplayer",
     accent: {
       bg: "rgba(56, 189, 248, 0.12)",
