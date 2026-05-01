@@ -1,26 +1,25 @@
-# Sync this Blueprint in Render (Dashboard → your service → Blueprint / Link repo),
-# OR create a new Web Service and paste Build + Start from below.
-#
+# Render deploy — IMPORTANT
+# ----------------------------
 # Troubleshooting: https://render.com/docs/troubleshooting-deploys
 #
-# Builds run `npm install`; postinstall runs `expo export` when RENDER=true.
-# Expo inlines EXPO_PUBLIC_* at export time — set them On Render BEFORE build:
+# If you use "Native Node" (no Docker): Dashboard → Settings → Start Command MUST be exactly:
+#   node scripts/render-serve.js
+#
+# Leaving it blank sometimes makes Render run `node expo-router/entry` as if `main`
+# were a file path → MODULE_NOT_FOUND. Your real Expo main is resolved via node_modules.
+#
+# This blueprint uses Docker so CMD in Dockerfile owns startup (always correct).
 
 services:
   - type: web
     name: dissertationgames-web
-    runtime: node
-    buildCommand: npm install && npm run export:web
-    # Do NOT leave Start Command blank — Render may run `node <package.json#main>` (expo-router/entry),
-    # which is wrong for an exported static web app under dist/.
-    startCommand: node scripts/render-serve.js
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     envVars:
-      - key: NODE_VERSION
-        value: "20.18.0"
-      # Must be \"true\" for scripts/render-postinstall.js (skips quietly if omitted).
+      # Needed by scripts/render-postinstall.js only during native npm installs (optional in Docker).
       - key: RENDER
         value: "true"
-      # Fill in Dashboard if using Blueprint (sync: false) or declare values here:
       - key: EXPO_PUBLIC_FIREBASE_API_KEY
         sync: false
       - key: EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN
@@ -33,7 +32,6 @@ services:
         sync: false
       - key: EXPO_PUBLIC_FIREBASE_APP_ID
         sync: false
-      # Optional — Analytics / trivia:
       - key: EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID
         sync: false
       - key: EXPO_PUBLIC_OPENAI_API_KEY
