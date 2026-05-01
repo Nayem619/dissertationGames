@@ -15,6 +15,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { auth } from "../../constants/firebase";
+import { claimUsername, sanitizeUsername } from "@/lib/socialProfile";
 
 export default function Signup() {
   const router = useRouter();
@@ -23,6 +24,7 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
+  const [usernameTag, setUsernameTag] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -56,6 +58,15 @@ export default function Signup() {
       await updateProfile(userCredential.user, {
         displayName: `${firstName} ${lastName}`.trim(),
       });
+
+      const tagSan = sanitizeUsername(usernameTag || "");
+      if (tagSan.length >= 3) {
+        try {
+          await claimUsername(usernameTag);
+        } catch (e) {
+          console.warn("Gamer tag skipped", e?.message || e);
+        }
+      }
 
       router.replace("/home");
     } catch (error) {
@@ -125,6 +136,21 @@ export default function Signup() {
               value={lastName}
               onChangeText={setLastName}
             />
+
+            <Text style={styles.label}>GAMER TAG (optional, for online)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="letters · numbers · underscores"
+              placeholderTextColor={Nexus.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              value={usernameTag}
+              maxLength={22}
+              onChangeText={setUsernameTag}
+            />
+            <Text style={styles.helpSmall}>
+              Saves as {sanitizeUsername(usernameTag) || "(min 3 chars to save)"} · you can set later in Social.
+            </Text>
 
             <Text style={styles.label}>EMAIL</Text>
             <TextInput
@@ -302,6 +328,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 16,
     color: Nexus.text,
+  },
+  helpSmall: {
+    color: Nexus.textMuted,
+    fontSize: 12,
+    marginTop: -8,
+    marginBottom: 14,
   },
   error: {
     color: "#ff6b6b",

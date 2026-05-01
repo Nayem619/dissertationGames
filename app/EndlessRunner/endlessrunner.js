@@ -1,4 +1,8 @@
-import { useRouter } from "expo-router";
+import {
+  PlayEntitlementSplash,
+  useConsumePlayEntitlement,
+} from "@/lib/useConsumePlayEntitlement";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { getAuth } from "firebase/auth";
 import {
   addDoc,
@@ -10,6 +14,7 @@ import {
 } from "firebase/firestore";
 import { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Easing,
   Platform,
@@ -20,6 +25,8 @@ import {
   View,
 } from "react-native";
 import { db } from "../../constants/firebase";
+import { softAcceptChallenge } from "@/lib/challenges";
+import { getISOWeekKey } from "../../lib/weekKey";
 
 const auth = getAuth();
 
@@ -38,8 +45,14 @@ const COIN_SPEED = 4;
 const COIN_SPAWN_CHANCE = 0.75;
 const WIN_POINTS = 8;
 
-export default function EndlessRunner() {
+function EndlessRunnerInner() {
   const router = useRouter();
+  const sp = useLocalSearchParams();
+  const challengeId = Array.isArray(sp.challengeId) ? sp.challengeId[0] : sp.challengeId;
+  const challengeTarget = Array.isArray(sp.challengeTarget)
+    ? sp.challengeTarget[0]
+    : sp.challengeTarget;
+  const challengeLoggedRef = useRef(false);
 
   const [started, setStarted] = useState(false);
   const [running, setRunning] = useState(false);
@@ -93,6 +106,7 @@ export default function EndlessRunner() {
         level: finalLevel,
         createdAt: serverTimestamp(),
         userId: user.uid,
+        weekKey: getISOWeekKey(),
       });
 
       const bestScoreRef = doc(
@@ -152,6 +166,19 @@ export default function EndlessRunner() {
     if (!savedRef.current && finalScore > 0) {
       savedRef.current = true;
       await saveScoreToFirebase(finalScore, finalPoints, finalLevel);
+    }
+    const tid = typeof challengeId === "string" ? challengeId.trim() : "";
+    const tgt = Number(challengeTarget);
+    if (
+      tid &&
+      Number.isFinite(tgt) &&
+      finalScore >= tgt &&
+      !challengeLoggedRef.current
+    ) {
+      challengeLoggedRef.current = true;
+      void softAcceptChallenge(tid).then(() =>
+        Alert.alert("Challenge", `Distance ${finalScore} ≥ ${Math.floor(tgt)} — logged.`)
+      );
     }
   };
 
@@ -326,6 +353,7 @@ export default function EndlessRunner() {
   };
 
   const startGame = () => {
+    challengeLoggedRef.current = false;
     setStarted(true);
     setRunning(true);
     setPaused(false);
@@ -843,4 +871,11 @@ const styles = StyleSheet.create({
     marginTop: 14,
     textAlign: "center",
   },
-});    
+});
+
+export default function EndlessRunner() {
+  const gate = useConsumePlayEntitlement("runner");
+  if (gate.loading) return <PlayEntitlementSplash entitlementId="runner" />;
+  if (!gate.ok) return null;
+  return <EndlessRunnerInner />;
+}

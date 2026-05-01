@@ -1,14 +1,19 @@
+import {
+  PlayEntitlementSplash,
+  useConsumePlayEntitlement,
+} from "@/lib/useConsumePlayEntitlement";
 import { useRouter } from "expo-router";
 import { getAuth } from "firebase/auth";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useState } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { getISOWeekKey } from "../../lib/weekKey";
 import { db } from "../../constants/firebase";
 
 const auth = getAuth();
 const choices = ["Rock", "Paper", "Scissors"];
 
-export default function RockPaperScissorsScreen() {
+function RockPaperScissorsInner() {
   const router = useRouter();
   const [playerChoice, setPlayerChoice] = useState(null);
   const [computerChoice, setComputerChoice] = useState(null);
@@ -55,6 +60,7 @@ export default function RockPaperScissorsScreen() {
         score: gameResult === "You Win" ? 1 : 0,
         createdAt: serverTimestamp(),
         userId: user.uid,
+        weekKey: getISOWeekKey(),
       });
 
       console.log("Rock Paper Scissors score saved with ID:", docRef.id);
@@ -383,3 +389,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 });
+
+export default function RockPaperScissorsScreen() {
+  const gate = useConsumePlayEntitlement("rps");
+  if (gate.loading) return <PlayEntitlementSplash entitlementId="rps" />;
+  if (!gate.ok) return null;
+  return <RockPaperScissorsInner />;
+}

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { getISOWeekKey } from "../../lib/weekKey";
 import { db } from "../../constants/firebase";
 
 export default function LeaderboardScreen() {
@@ -18,6 +19,7 @@ export default function LeaderboardScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState("score");
+  const [weekOnly, setWeekOnly] = useState(false);
 
   useEffect(() => {
     const fetchScores = async () => {
@@ -63,15 +65,23 @@ export default function LeaderboardScreen() {
     fetchScores();
   }, [game]);
 
+  const isoWeekLabel = useMemo(() => getISOWeekKey(), []);
+
+  const filteredScores = useMemo(() => {
+    if (!game || game === "endlessrunner") return allScores;
+    if (!weekOnly) return allScores;
+    return allScores.filter((row) => (row.weekKey || "") === isoWeekLabel);
+  }, [allScores, game, weekOnly, isoWeekLabel]);
+
   const scoreLeaderboard = useMemo(() => {
     // Endless Runner already comes in as one best row per player
     if (game === "endlessrunner") {
-      return [...allScores].sort((a, b) => (b.score || 0) - (a.score || 0));
+      return [...filteredScores].sort((a, b) => (b.score || 0) - (a.score || 0));
     }
 
     const playerTotals = {};
 
-    allScores.forEach((item) => {
+    filteredScores.forEach((item) => {
       const playerName = item.player || "Unknown";
 
       if (!playerTotals[playerName]) {
@@ -103,15 +113,26 @@ export default function LeaderboardScreen() {
           playerTotals[playerName].difficulty = item.difficulty || "-";
         }
       }
+
+      if (
+        typeof game === "string" &&
+        game.startsWith("arcade_") &&
+        typeof item.score === "number"
+      ) {
+        if (item.score > playerTotals[playerName].value) {
+          playerTotals[playerName].value = item.score;
+          playerTotals[playerName].difficulty = item.difficulty || "-";
+        }
+      }
     });
 
     return Object.values(playerTotals).sort((a, b) => b.value - a.value);
-  }, [allScores, game]);
+  }, [filteredScores, game]);
 
   const levelLeaderboard = useMemo(() => {
     const playerLevels = {};
 
-    allScores.forEach((item) => {
+    filteredScores.forEach((item) => {
       const playerName = item.player || "Unknown";
 
       const currentLevel =
@@ -134,7 +155,7 @@ export default function LeaderboardScreen() {
     });
 
     return Object.values(playerLevels).sort((a, b) => b.value - a.value);
-  }, [allScores]);
+  }, [filteredScores]);
 
   const leaderboardData =
     game === "snake" && viewMode === "level"
@@ -147,6 +168,9 @@ export default function LeaderboardScreen() {
     if (game === "snake") return "Snake Leaderboard";
     if (game === "endlessrunner") return "Endless Runner Leaderboard";
     if (game === "trivia") return "Trivia Leaderboard";
+    if (typeof game === "string" && game.startsWith("arcade_")) {
+      return `Arcade — ${game.slice(7).replace(/_/g, " ")}`;
+    }
     return "Leaderboard";
   };
 
@@ -167,6 +191,10 @@ export default function LeaderboardScreen() {
       return "Top players by highest endless runner score";
     }
 
+    if (typeof game === "string" && game.startsWith("arcade_")) {
+      return "Best score per player (Arcade WebView)";
+    }
+
     return "Top players for this game";
   };
 
@@ -185,7 +213,8 @@ export default function LeaderboardScreen() {
           <View style={styles.playerInfo}>
             <Text style={styles.player}>{item.player}</Text>
 
-            {(game === "snake" || game === "trivia") &&
+            {(game === "snake" || game === "trivia" ||
+              (typeof game === "string" && game.startsWith("arcade_"))) &&
             item.difficulty &&
             item.difficulty !== "-" ? (
               <Text style={styles.difficultyText}>
@@ -244,6 +273,23 @@ export default function LeaderboardScreen() {
       <View style={styles.card}>
         <Text style={styles.title}>{getTitle()}</Text>
         <Text style={styles.subtitle}>{getSubtitle()}</Text>
+
+        {game && game !== "endlessrunner" ? (
+          <View style={styles.toggleRow}>
+            <TouchableOpacity
+              style={[styles.toggleButton, !weekOnly && styles.activeToggleButton]}
+              onPress={() => setWeekOnly(false)}
+            >
+              <Text style={[styles.toggleText, !weekOnly && styles.activeToggleText]}>All time</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleButton, weekOnly && styles.activeToggleButton]}
+              onPress={() => setWeekOnly(true)}
+            >
+              <Text style={[styles.toggleText, weekOnly && styles.activeToggleText]}>This week</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {game === "snake" ? (
           <View style={styles.toggleRow}>

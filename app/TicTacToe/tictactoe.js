@@ -1,13 +1,18 @@
+import {
+  PlayEntitlementSplash,
+  useConsumePlayEntitlement,
+} from "@/lib/useConsumePlayEntitlement";
 import { useRouter } from "expo-router";
 import { getAuth } from "firebase/auth";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { getISOWeekKey } from "../../lib/weekKey";
 import { db } from "../../constants/firebase";
 
 const auth = getAuth();
 
-export default function TicTacToeScreen() {
+function TicTacToeInner() {
   const router = useRouter();
   const [mode, setMode] = useState(null);
   const [board, setBoard] = useState([
@@ -64,6 +69,7 @@ export default function TicTacToeScreen() {
         score: 1,
         createdAt: serverTimestamp(),
         userId: user.uid,
+        weekKey: getISOWeekKey(),
       });
 
       console.log("Win saved to Firestore with ID:", docRef.id);
@@ -518,3 +524,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+
+export default function TicTacToeScreen() {
+  const gate = useConsumePlayEntitlement("tictactoe");
+  if (gate.loading) return <PlayEntitlementSplash entitlementId="tictactoe" />;
+  if (!gate.ok) return null;
+  return <TicTacToeInner />;
+}

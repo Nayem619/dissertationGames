@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { getAuth } from "firebase/auth";
 import {
   addDoc,
@@ -8,7 +8,7 @@ import {
   serverTimestamp,
   where,
 } from "firebase/firestore";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,7 +18,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import {
+  PlayEntitlementSplash,
+  useConsumePlayEntitlement,
+} from "@/lib/useConsumePlayEntitlement";
+import { getISOWeekKey } from "../../lib/weekKey";
 import { db } from "../../constants/firebase";
+import { softAcceptChallenge } from "@/lib/challenges";
 
 const auth = getAuth();
 
@@ -177,8 +183,16 @@ async function buildQuizForDifficulty(difficulty) {
   return fromCache;
 }
 
-export default function TriviaGame() {
+function TriviaGameInner() {
   const router = useRouter();
+  const search = useLocalSearchParams();
+  const challengeId = Array.isArray(search.challengeId)
+    ? search.challengeId[0]
+    : search.challengeId;
+  const challengeTarget = Array.isArray(search.challengeTarget)
+    ? search.challengeTarget[0]
+    : search.challengeTarget;
+  const challengeBeatRef = useRef(false);
 
   const [selectedDifficulty, setSelectedDifficulty] = useState("");
   const [started, setStarted] = useState(false);
@@ -218,6 +232,7 @@ export default function TriviaGame() {
       setAnswered(false);
       setFinished(false);
       setScoreSaved(false);
+      challengeBeatRef.current = false;
     } catch (e) {
       const msg = e?.message || "Could not load trivia.";
       Alert.alert("Trivia", msg);
@@ -276,6 +291,7 @@ export default function TriviaGame() {
         totalQuestions: totalQuestions,
         createdAt: serverTimestamp(),
         userId: user.uid,
+        weekKey: getISOWeekKey(),
       });
 
       setScoreSaved(true);
@@ -289,6 +305,22 @@ export default function TriviaGame() {
       saveScoreToFirebase();
     }
   }, [finished, scoreSaved]);
+
+  useEffect(() => {
+    if (!finished || !scoreSaved || !challengeId || challengeBeatRef.current) return;
+    const t = Number(challengeTarget);
+    if (!Number.isFinite(t)) return;
+    if (score < t) return;
+    challengeBeatRef.current = true;
+    (async () => {
+      try {
+        await softAcceptChallenge(String(challengeId));
+        Alert.alert("Challenge", `Beat target (${Math.floor(t)}+ correct). Logged.`);
+      } catch (e) {
+        console.warn(e);
+      }
+    })();
+  }, [finished, scoreSaved, challengeId, challengeTarget, score]);
 
   const getOptionStyle = (option) => {
     if (!answered) {
@@ -828,3 +860,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+
+export default function TriviaGame() {
+  const gate = useConsumePlayEntitlement("trivia");
+  if (gate.loading) return <PlayEntitlementSplash entitlementId="trivia" />;
+  if (!gate.ok) return null;
+  return <TriviaGameInner />;
+}

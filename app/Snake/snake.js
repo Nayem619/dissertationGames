@@ -4,6 +4,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { WebView } from "react-native-webview";
 
+import {
+  PlayEntitlementSplash,
+  useConsumePlayEntitlement,
+} from "@/lib/useConsumePlayEntitlement";
+
 function trimUrl(s) {
   if (!s || typeof s !== "string") return "";
   const t = s.trim();
@@ -161,6 +166,9 @@ function GameTopRow({ onBack, onLeaderboard, tint = "#e6edf3" }) {
 }
 
 function PhaserSnakeWebView() {
+  const gate = useConsumePlayEntitlement("snake");
+  if (gate.loading) return <PlayEntitlementSplash entitlementId="snake" />;
+  if (!gate.ok) return null;
   const router = useRouter();
   const remote = getSnakeWebUrl();
   const source = remote
@@ -196,6 +204,9 @@ function GameTopRowSimple({ onBack, tint = "#fce7f3" }) {
 }
 
 function GemMatchWebView() {
+  const gate = useConsumePlayEntitlement("gemmatch");
+  if (gate.loading) return <PlayEntitlementSplash entitlementId="gemmatch" />;
+  if (!gate.ok) return null;
   const router = useRouter();
   const url = getGemMatchWebUrl();
   if (!url) {
@@ -266,6 +277,12 @@ function SnakeHub() {
           onPress={() => router.push("/Leaderboard/leaderboard?game=snake")}
         >
           <Text style={hubStyles.secondaryT}>View leaderboard (snake)</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={hubStyles.secondary}
+          onPress={() => router.push("/Arcade/arcade")}
+        >
+          <Text style={hubStyles.secondaryT}>Phaser arcade (chess, breakout…)</Text>
         </TouchableOpacity>
         <TouchableOpacity style={hubStyles.back} onPress={() => router.push("/home")}>
           <Text style={hubStyles.backT}>Back to main menu</Text>
