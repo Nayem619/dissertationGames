@@ -27,28 +27,6 @@ export const unstable_settings = {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
-  // #region agent log
-  useEffect(() => {
-    fetch("http://127.0.0.1:7865/ingest/0ecd33e7-af68-46c6-bbe3-d95a5d8f6748", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "1c5831",
-      },
-      body: JSON.stringify({
-        sessionId: "1c5831",
-        hypothesisId: "H-layout",
-        location: "app/_layout.js:RootLayout",
-        message: "root_layout_mounted",
-        data: {
-          studyDuelReg: "folder-only (removed study-duel/index + study-duel/join Stack.Screen)",
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  }, []);
-  // #endregion agent log
-
   return (
     <SafeAreaProvider>
     <PrefsProvider>
