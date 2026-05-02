@@ -2,18 +2,27 @@
 
 ## Chess (almost nothing to do)
 
-Chess in the app loads **`https://ches.su`** in a WebView by default (see **`lib/vendorArcade.js`**).
+The app opens **`https://lichess.org`** in a WebView by default (**`lib/vendorArcade.js`**) — that host resolves reliably on phones. Older default **`ches.su`** often fails DNS (**hostname could not be found**).
 
-1. Pull latest **`main`** and run the app (or use the web build on Render).
-2. Open **Arcade → Chess**. You do **not** need Mongo, Postgres, or a Render service for chess **unless** you want your own copy of chessu.
+1. Pull latest **`main`** and run the app (or redeploy **`dissertationgames-web`**).
+2. Open **Arcade → Chess**.
 
-To use your own chess host later, set **`EXPO_PUBLIC_VENDOR_CHESS_URL`** to your Next URL and rebuild.
+Self-host **`vendor/chessu`** instead: set **`EXPO_PUBLIC_VENDOR_CHESS_URL`** to your HTTPS UI and rebuild.
 
 ---
 
-## Ludo (MongoDB Atlas + Render)
+## Ludo — deploy the Render service first
 
-Ludo is your service **`dissertationgames-ludo`** (from **`render.yaml`**). It needs a **Mongo connection string** env var named **`CONNECTION_URI`**.
+Your WebView expects **`https://dissertationgames-ludo.onrender.com`**.
+
+If **Ludo is blank** or tools show **HTTP 404** / **`x-render-routing: no-server`**, that URL has **no live service**. Create it:
+
+- **Blueprints**: sync **`render.yaml`** from this repo so **`dissertationgames-ludo`** exists,  
+  **or**
+- **New → Web Service** from the repo: **Docker**, **`Dockerfile Path`** = **`vendor/mern-ludo/Dockerfile`**, **`Docker Context`** = **`vendor/mern-ludo`**, **name** = **`dissertationgames-ludo`** (so the default URL matches **`lib/vendorArcade.js`**).
+
+Then add Mongo (**`CONNECTION_URI`**) below.
+
 
 ### Step 1 — Atlas project and cluster
 
@@ -66,7 +75,7 @@ If the service was never created from the blueprint, push **`render.yaml`** and 
 
 Defaults in code / **`render.yaml`**:
 
-- Chess: **`https://ches.su`**
+- Chess: **`https://lichess.org`**
 - Ludo: **`https://dissertationgames-ludo.onrender.com`**
 
 After Ludo is green, redeploy **`dissertationgames-web`** once so **`expo export`** bakes the same vendor URLs if you changed them in Render env.
@@ -79,8 +88,8 @@ Mobile / Expo: **`npx expo start -c`** after pulling **`main`** if you rely on b
 
 | Game  | What you configure |
 |-------|---------------------|
-| **Chess** | Nothing mandatory — **`https://ches.su`** is the default UIs (`EXPO_PUBLIC_VENDOR_CHESS_URL` optional override). |
-| **Ludo** | Atlas cluster + DB user → Network Access **`0.0.0.0/0`** → **`CONNECTION_URI`** on **`dissertationgames-ludo`** in Render → wait for deploy success. |
+| **Chess** | Nothing mandatory — **`https://lichess.org`** default (`EXPO_PUBLIC_VENDOR_CHESS_URL` overrides). **`ches.su` often breaks DNS on mobile.** |
+| **Ludo** | **`dissertationgames-ludo`** must exist on Render (not only `dissertationgames-web`). Then Atlas → **`0.0.0.0/0`** → **`CONNECTION_URI`** on that service → wait for Live. |
 
 ---
 

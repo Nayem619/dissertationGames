@@ -137,7 +137,23 @@ export function VendorArcadeWebView({ kind, title, onBack, statusTint, onLeaderb
             const d = e?.nativeEvent?.description;
             setLoadErr(String(d || "Network error").trim());
           }}
-          onHttpError={() => setLoading(false)}
+          onHttpError={(e) => {
+            setLoading(false);
+            const status = e?.nativeEvent?.statusCode;
+            const failedUrl = String(e?.nativeEvent?.url || uri || "");
+            if (status && status >= 400) {
+              let msg = `HTTP ${status}`;
+              if (
+                status === 404 &&
+                failedUrl.includes("onrender.com") &&
+                kind === "ludo"
+              ) {
+                msg =
+                  "HTTP 404 — no Render service at this URL yet. Deploy the dissertationgames-ludo Web Service from render.yaml (Docker: vendor/mern-ludo) or fix EXPO_PUBLIC_VENDOR_LUDO_URL.";
+              }
+              setLoadErr((prev) => prev || msg);
+            }
+          }}
         />
       </View>
     </View>
