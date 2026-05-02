@@ -16,4 +16,4 @@ Pinned **shallow git clones** (run `git pull --unshallow` inside a folder only i
 - **Why:** **MERN + Socket.IO** multiplayer, tests/Docker/AWS story, React + MongoDB sessions.  
 - **Run:** From `mern-ludo/`: set MongoDB URI in `backend/.env`, `npm i` / `npm start` as in upstream README, start `backend/server.js`.
 
-The Expo app opens each game in a **WebView** using **`EXPO_PUBLIC_VENDOR_CHESS_URL`** / **`EXPO_PUBLIC_VENDOR_LUDO_URL`**. Defaults: **https://lichess.org** (reliable DNS) + **https://dissertationgames-ludo.onrender.com** (**`render.yaml`** Docker service — must be deployed + Mongo **`CONNECTION_URI`**). **`[RENDER.md](./RENDER.md)`** explains deploy + Atlas. LAN dev: **`[ARCADE_LOCAL_DEV.md](./ARCADE_LOCAL_DEV.md)`**.
+**Arcade (Play Hub)** only lists **Phaser** mini-games (`app/Arcade/`). Chessu / MERN Ludo under **`vendor/`** are standalone reference trees for your own deployment. **`[RENDER.md](./RENDER.md)`** · **`[ARCADE_LOCAL_DEV.md](./ARCADE_LOCAL_DEV.md)`**.

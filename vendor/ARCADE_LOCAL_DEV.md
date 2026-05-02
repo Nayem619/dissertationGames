@@ -1,8 +1,9 @@
-# Run Chess / Ludo for the Expo app (local test)
+# Run Chess / Ludo locally (`vendor/`)
 
-Defaults in the Expo app assume **http://localhost:3000** for both Chess and Ludo UIs (`EXPO_PUBLIC_VENDOR_CHESS_URL`, `EXPO_PUBLIC_VENDOR_LUDO_URL`). Override in `.env` if you need another host/port.
+The **Play Hub Arcade does not embed** these games anymore — run them in **browser** for local testing only.
 
 ---
+
 
 ## Chess (`vendor/chessu`)
 
@@ -18,7 +19,7 @@ Defaults in the Expo app assume **http://localhost:3000** for both Chess and Lud
      `NEXT_PUBLIC_API_URL=http://10.0.2.2:3001`
    - **Physical device on Wi‑Fi** (your laptop is e.g. `192.168.1.42`):  
      `NEXT_PUBLIC_API_URL=http://192.168.1.42:3001`  
-     Set in the **Expo** `.env` the same host for **`EXPO_PUBLIC_VENDOR_CHESS_URL=http://192.168.1.42:3000`**.
+     Open **`http://192.168.1.42:3000`** in a phone browser when testing chessu remotely.
 
 4. Install and run:
 
@@ -51,11 +52,10 @@ Defaults in the Expo app assume **http://localhost:3000** for both Chess and Lud
    cd vendor/mern-ludo && npm install && npm start
    ```
 
-5. Expo app **`EXPO_PUBLIC_VENDOR_LUDO_URL`** must match that UI origin (`http://localhost:3000`, `http://10.0.2.2:3000`, or `http://YOUR_LAN_IP:3000`).  
-   Socket client uses **`window.location.hostname`** and port **8080** — same LAN IP applies automatically once the WebView loads the right UI URL.
+5. CRA dev URL is **`http://localhost:3000`**, **`http://10.0.2.2:3000`** (Android emu), or **`http://YOUR_LAN_IP:3000`** (phone browser). Socket client defaults to **`window.location.hostname`** and port **8080** locally.
 
 ---
 
-## Render later
+## Render / production
 
-Bake **`EXPO_PUBLIC_VENDOR_CHESS_URL`** / **`EXPO_PUBLIC_VENDOR_LUDO_URL`** as your **HTTPS** Render URLs after you deploy both frontends (and backends) there.
+Publish chessu / Ludo on **HTTPS**, then browse each URL standalone (Arcade lists Phaser titles only inside the Expo app).

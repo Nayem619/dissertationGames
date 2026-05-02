@@ -227,8 +227,6 @@ export default function MultiplayerLobby() {
         <Text style={s.p}>
           Two signed-in players share one Firestore room. Same 6-letter code on both devices · live messages live in{" "}
           <Text style={{ color: Nexus.cyan }}>{`multiplayer_rooms/{code}/messages`}</Text>. Online chess host = White · guest = Black.
-          Arcade also lists separate <Text style={{ fontWeight: "800", color: Nexus.text }}>vendor chess &amp; Ludo</Text> URLs
-          (own servers / sockets — see <Text style={{ fontWeight: "700", color: Nexus.magenta }}>vendor/ARCADE_LOCAL_DEV.md</Text>).
         </Text>
         <Text style={s.pMuted}>
           Research cohort UX: {!prefs.abVariant ? "refreshing…" : prefs.abVariant === "B" ? "B · treatment overlays" : "A · control"}

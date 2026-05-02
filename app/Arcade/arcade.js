@@ -20,7 +20,6 @@ import {
 } from "./extraGamesHtml";
 import { dispatchPuzzleWebMessage } from "@/lib/puzzleBridge";
 import { PhaserInlineWebView } from "./PhaserWebGameShell";
-import { VendorArcadeWebView } from "./VendorArcadeWebView";
 import { PHASER_ARCADE_ROWS } from "./arcadeCatalog";
 
 import { hubStyles } from "./arcadeHubStyles";
@@ -41,10 +40,8 @@ const HTML_BY_PLAY = {
 
 const ARCADE_ITEMS = PHASER_ARCADE_ROWS.map((row) => ({
   ...row,
-  ...(row.vendorHosted
-    ? { vendorKind: row.play === "chess" || row.play === "ludo" ? row.play : null }
-    : { html: HTML_BY_PLAY[row.play] }),
-})).filter((x) => x.html || x.vendorKind);
+  html: HTML_BY_PLAY[row.play],
+}));
 
 function ArcadeHub() {
   const router = useRouter();
@@ -53,8 +50,8 @@ function ArcadeHub() {
       <ScrollView contentContainerStyle={hubStyles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={hubStyles.h1}>Arcade</Text>
         <Text style={hubStyles.sub}>
-          Chess &amp; Ludo open your hosted multiplayer builds (URLs in .env / Render). Classic
-          mini-games embed Phaser locally with CDN fallback.
+          Classic mini-games run Phaser locally with CDN fallback · scores can post to the arcade
+          leaderboards where listed.
         </Text>
 
         {ARCADE_ITEMS.map((g) => (
@@ -95,7 +92,7 @@ export default function ArcadeRoute() {
   const challengeTarget = Number(challengeTargetRaw);
 
   const item = ARCADE_ITEMS.find((x) => x.play === play);
-  const shellOpen = !!(item?.html || item?.vendorKind);
+  const shellOpen = !!item?.html;
   const gate = useConsumePlayEntitlement(shellOpen ? "arcade" : "", {
     skip: !shellOpen,
   });
@@ -154,18 +151,6 @@ export default function ArcadeRoute() {
   if (shellOpen) {
     if (gate.loading) return <PlayEntitlementSplash entitlementId="arcade" />;
     if (!gate.ok) return <View style={{ flex: 1, backgroundColor: "#0a0a0f" }} />;
-  }
-
-  if (item?.vendorKind) {
-    return (
-      <VendorArcadeWebView
-        kind={item.vendorKind}
-        title={item.title}
-        onBack={() => router.replace("/home")}
-        statusTint="#00ffaa"
-        onLeaderboard={undefined}
-      />
-    );
   }
 
   if (item?.html) {

@@ -5,24 +5,6 @@
 
 export const PHASER_ARCADE_ROWS = [
   {
-    play: "chess",
-    title: "CHESS",
-    emoji: "♟️",
-    blurb: "Multiplayer chess (chessu: Next.js + sockets — set Vendor URL env).",
-    color: "#1a5533",
-    lb: null,
-    vendorHosted: true,
-  },
-  {
-    play: "ludo",
-    title: "LUDO",
-    emoji: "🎲",
-    blurb: "Online Ludo (MERN stack + Socket.IO — MongoDB backend).",
-    color: "#7c1485",
-    lb: null,
-    vendorHosted: true,
-  },
-  {
     play: "breakout",
     title: "BREAKOUT",
     emoji: "🧱",

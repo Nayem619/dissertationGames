@@ -282,7 +282,7 @@ function SnakeHub() {
           style={hubStyles.secondary}
           onPress={() => router.push("/Arcade/arcade")}
         >
-          <Text style={hubStyles.secondaryT}>Phaser arcade (chess, breakout…)</Text>
+          <Text style={hubStyles.secondaryT}>Phaser arcade (breakout, memory…)</Text>
         </TouchableOpacity>
         <TouchableOpacity style={hubStyles.back} onPress={() => router.push("/home")}>
           <Text style={hubStyles.backT}>Back to main menu</Text>

@@ -38,12 +38,7 @@ function arcadeRowToHomeCard(g) {
   };
 }
 
-const chessRow = PHASER_ARCADE_ROWS.find((g) => g.play === "chess");
-const ludoRow = PHASER_ARCADE_ROWS.find((g) => g.play === "ludo");
-const HOME_ARCADE_TOP = [chessRow, ludoRow].filter(Boolean).map(arcadeRowToHomeCard);
-const HOME_ARCADE_REST = PHASER_ARCADE_ROWS.filter(
-  (g) => g.play !== "chess" && g.play !== "ludo"
-).map(arcadeRowToHomeCard);
+const HOME_ARCADE_CARDS = PHASER_ARCADE_ROWS.map(arcadeRowToHomeCard);
 
 const TRIVIA_HOME_CARD = {
   id: "trivia",
@@ -54,7 +49,6 @@ const TRIVIA_HOME_CARD = {
 };
 
 const GAMES = [
-  ...HOME_ARCADE_TOP,
   TRIVIA_HOME_CARD,
   {
     id: "puzzle",
@@ -92,7 +86,7 @@ const GAMES = [
       iconBg: "#7c3aed",
     },
   },
-  ...HOME_ARCADE_REST,
+  ...HOME_ARCADE_CARDS,
   {
     id: "tictactoe",
     name: "TIC TAC TOE",

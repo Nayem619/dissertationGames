@@ -42,10 +42,6 @@ services:
         sync: false
       - key: EXPO_PUBLIC_OPENAI_MODEL
         sync: false
-      - key: EXPO_PUBLIC_VENDOR_CHESS_URL
-        value: https://lichess.org
-      - key: EXPO_PUBLIC_VENDOR_LUDO_URL
-        value: https://dissertationgames-ludo.onrender.com
       - key: EXPO_PUBLIC_TRIVIA_GENERATE_URL
         sync: false
 
