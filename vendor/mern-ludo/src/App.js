@@ -8,12 +8,25 @@ import LoginPage from './components/LoginPage/LoginPage';
 export const PlayerDataContext = createContext();
 export const SocketContext = createContext();
 
+/** Production (Render): set REACT_APP_SOCKET_URL to the backend HTTPS origin (e.g. https://ludo-api.onrender.com). */
+function socketOrigin() {
+    const fromEnv =
+        typeof process !== 'undefined' && process.env.REACT_APP_SOCKET_URL
+            ? String(process.env.REACT_APP_SOCKET_URL).trim().replace(/\/+$/, '')
+            : '';
+    if (fromEnv) return fromEnv;
+    if (typeof window !== 'undefined') {
+        return `http://${window.location.hostname}:8080`;
+    }
+    return 'http://localhost:8080';
+}
+
 function App() {
     const [playerData, setPlayerData] = useState();
     const [playerSocket, setPlayerSocket] = useState();
     const [redirect, setRedirect] = useState();
     useEffect(() => {
-        const socket = io(`http://${window.location.hostname}:8080`, { withCredentials: true });
+        const socket = io(socketOrigin(), { withCredentials: true });
         socket.on('player:data', data => {
             data = JSON.parse(data);
             setPlayerData(data);
