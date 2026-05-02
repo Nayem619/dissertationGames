@@ -39,7 +39,7 @@ const PHASER_HOME_CARDS = PHASER_ARCADE_ROWS.map((g) => ({
 const GAMES = [
   {
     id: "puzzle",
-    name: "PATH PUZZLES",
+    name: "PUZZLE LADDER · Flow / Pipe / Ice",
     icon: "🔗",
     href: { pathname: "/puzzle-ladder" },
     route: null,
@@ -47,18 +47,6 @@ const GAMES = [
       bg: "rgba(34,211,238,0.1)",
       border: "rgba(34,211,238,0.45)",
       iconBg: "#0e7490",
-    },
-  },
-  {
-    id: "puzzle-flow",
-    name: "FLOW PUZZLE (SOLO)",
-    icon: "⚫",
-    href: { pathname: "/puzzle/flow" },
-    route: null,
-    accent: {
-      bg: "rgba(29,78,216,0.12)",
-      border: "rgba(96,165,250,0.45)",
-      iconBg: "#1d4ed8",
     },
   },
   {
