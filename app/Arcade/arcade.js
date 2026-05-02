@@ -9,11 +9,6 @@ import {
   useConsumePlayEntitlement,
 } from "@/lib/useConsumePlayEntitlement";
 import {
-  PHASER_BREAKOUT_HTML,
-  PHASER_MEMORY_HTML,
-  PHASER_PONG_HTML,
-} from "./gamesHtml";
-import {
   PHASER_CONNECT4_HTML,
   PHASER_FLAPPY_HTML,
   PHASER_SIMON_HTML,
@@ -30,9 +25,6 @@ function paramFirst(p, key) {
 }
 
 const HTML_BY_PLAY = {
-  breakout: PHASER_BREAKOUT_HTML,
-  memory: PHASER_MEMORY_HTML,
-  pong: PHASER_PONG_HTML,
   flappy: PHASER_FLAPPY_HTML,
   simon: PHASER_SIMON_HTML,
   connect4: PHASER_CONNECT4_HTML,
@@ -118,9 +110,6 @@ export default function ArcadeRoute() {
       if (!msg || msg.type !== "ARCADE_SCORE") return;
       const key = typeof msg.game === "string" ? msg.game.toLowerCase() : "";
       const map = {
-        breakout: "arcade_breakout",
-        memory: "arcade_memory",
-        pong: "arcade_pong",
         flappy: "arcade_flappy",
         simon: "arcade_simon",
         connect4: "arcade_connect4",

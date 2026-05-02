@@ -5,30 +5,6 @@
 
 export const PHASER_ARCADE_ROWS = [
   {
-    play: "breakout",
-    title: "BREAKOUT",
-    emoji: "🧱",
-    blurb: "Drag paddle · smash all bricks.",
-    color: "#0f4fd4",
-    lb: "arcade_breakout",
-  },
-  {
-    play: "memory",
-    title: "CARD MATCH",
-    emoji: "🃏",
-    blurb: "Find pairs. Tap replay zone after you clear.",
-    color: "#6b21b6",
-    lb: "arcade_memory",
-  },
-  {
-    play: "pong",
-    title: "PONG VS CPU",
-    emoji: "🏓",
-    blurb: "Move bottom paddle · bounce past the AI.",
-    color: "#b45309",
-    lb: "arcade_pong",
-  },
-  {
     play: "flappy",
     title: "DODGE RUN",
     emoji: "🪶",
