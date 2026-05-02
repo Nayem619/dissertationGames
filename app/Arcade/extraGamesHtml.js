@@ -41,35 +41,3 @@ function draw(){g.clear();g.fillStyle(2368548,1);g.fillRect(0,40,W,H-40);for(yy=
 draw();sc.input.on("pointerdown",function(p){if(over)return;var col=Math.floor(p.worldX/SZ);if(col<0||col>=C)return;var row=R-1;while(row>=0&&grid[row][col])row--;if(row<0)return;grid[row][col]=cur;var w=line4();draw();if(w===1||w===2){over=1;lab.setText(w===1?"YELLOW WINS":"RED WINS");try{window.NexusPost&&window.NexusPost({type:"ARCADE_SCORE",game:"connect4",score:100});}catch(_){};return;}if(w===-1){over=1;lab.setText("DRAW");try{window.NexusPost&&window.NexusPost({type:"ARCADE_SCORE",game:"connect4",score:40});}catch(_){};return;}cur=(cur===1)?2:1});};
 window.onload=function(){new Phaser.Game({type:Phaser.AUTO,width:W,height:H,parent:"g",scene:Mn,backgroundColor:200960,scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH}});};})();
 <\/script></body></html>`;
-
-/** Circular track, two counters, capture, need 6 to enter — hot-seat (not synced online). Inspired by classic Ludo. */
-export const PHASER_LUDO_LITE_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
-<style>html,body{margin:0;height:100%;background:#1f0f18}</style></head><body><div id="g"></div>
-<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"><\/script>
-<script>(function(){
-function post(o){try{window.ReactNativeWebView&&window.ReactNativeWebView.postMessage(typeof o==="string"?o:JSON.stringify(o))}catch(_){}}
-function fail(m){post({type:"ARCADE_RUNTIME",subtype:"BOOT",detail:String(m||"Game failed to start")})}
-if(window.__ludoPhaserBoot)return;window.__ludoPhaserBoot=1;
-if(typeof Phaser==="undefined"){fail("Phaser did not load. Tap Retry — the app bundles Phaser for offline play.");return;}
-try{
-var W=400,H=668,N=40,E0=0,E1=20,G=48;
-function XY(i){var t=i/N*Math.PI*2-Math.PI*.5,R=118;return{x:W*.5+R*Math.cos(t),y:H*.4+R*Math.sin(t)};}
-function Ud(){Phaser.Scene.call(this,{key:"ludo"});}
-Ud.prototype=Object.create(Phaser.Scene.prototype);
-Ud.prototype.constructor=Ud;
-Ud.prototype.create=function(){var a=-1,b=-1,ta=0,tb=0,tu=0,fi=0,me=this,Gk=me.add.graphics(),
-h=me.add.text(W*.5,24,"LUDO LITE (Phaser) · Orange vs Cyan",{fontSize:13,color:"#ffd3ff"}).setOrigin(.5),
-sx=me.add.text(W*.5,42,"tap purple ROLL",{fontSize:11,color:"#aa90aa"}).setOrigin(.5),
-ga=me.add.circle(-20,-20,12,16753920),gb=me.add.circle(-20,-20,12,34695);
-function ln(){Gk.clear();var k,p,q;for(k=0;k<N;k++){p=XY(k);q=XY((k+1)%N);Gk.lineStyle(2,11184810,.8);Gk.beginPath();Gk.moveTo(p.x,p.y);Gk.lineTo(q.x,q.y);Gk.strokePath();}}
-function tk(){ln();var A=a<0?{x:92,y:H*.35}:XY(a),B=b<0?{x:W-92,y:H*.35}:XY(b);ga.setPosition(A.x,A.y);gb.setPosition(B.x,B.y);}
-function dn(w){fi=1;h.setText("P"+w+" wins!");sx.setText("Tap bar to replay");tk();}
-tk();me.add.rectangle(W*.5,H-72,172,46,11634687).setInteractive({useHandCursor:1}).on("pointerdown",function(){if(fi){fi=0;a=-1;b=-1;ta=0;tb=0;tu=0;h.setText("LUDO LITE");sx.setText("tap purple ROLL");tk();return;}
-var d=1+Math.floor(6*Math.random());sx.setText((tu?"P2":"P1")+" rolled "+d);
-if(!tu){if(a<0){if(d===6)a=E0;}else{a=(a+d)%N;if(a===b)b=-1;ta+=d;if(ta>=G)return dn(1);}}else{if(b<0){if(d===6)b=E1;}else{b=(b+d)%N;if(b===a)a=-1;tb+=d;if(tb>=G)return dn(2);}}
-tu=!tu;h.setText((tu?"P2 cyan":"P1 orange")+" · purple ROLL");tk();});};
-new Phaser.Game({type:Phaser.AUTO,width:W,height:H,parent:"g",scene:Ud,backgroundColor:2039594,scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH}});
-post({type:"ARCADE_SURFACE_OK",surface:"ludo"});
-}catch(e){fail(e&&e.message?e.message:"boot_error")}
-})();
-<\/script></body></html>`;

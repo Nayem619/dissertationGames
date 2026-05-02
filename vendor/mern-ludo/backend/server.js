@@ -7,6 +7,8 @@ require('dotenv').config();
 const { sessionMiddleware } = require('./config/session');
 
 const PORT = process.env.PORT;
+const getAllowedCorsOrigins = require('./config/corsAllowed');
+const allowedOrigins = getAllowedCorsOrigins();
 
 const app = express();
 
@@ -20,7 +22,17 @@ app.use(express.json());
 app.set('trust proxy', 1);
 app.use(
     cors({
-        origin: 'http://localhost:3000',
+        origin(origin, callback) {
+            if (!origin) {
+                callback(null, true);
+                return;
+            }
+            if (allowedOrigins.includes(origin)) {
+                callback(null, true);
+                return;
+            }
+            callback(new Error('Not allowed by CORS'));
+        },
         credentials: true,
     })
 );

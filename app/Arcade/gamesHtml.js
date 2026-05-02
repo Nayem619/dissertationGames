@@ -1,46 +1,5 @@
 
-/** Inline Phaser 3 games (+ chess.js for chess). CDN scripts load at runtime. */
-
-export const PHASER_CHESS_HTML = `<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<style>*{box-sizing:border-box}html,body{height:100%;margin:0;background:#0a0f14}
-body{display:flex;flex-direction:column;font-family:system-ui,sans-serif}
-#bar{flex:0 0 auto;padding:12px;font-size:13px;color:#bfffe0;text-align:center;background:#121826;border-bottom:1px solid rgba(0,255,136,0.2)}
-#g{flex:1;min-height:0}</style></head><body>
-<div id="bar"><span id="msg">White moves first · tap your piece · tap a green circle</span></div>
-<div id="g"></div>
-<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"><\/script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"><\/script>
-<script>(function(){var SZ=44,W=SZ*8,H=SZ*8,F="abcdefgh";
-function chars(c,t){var W={k:"\\u2654",q:"\\u2655",r:"\\u2656",b:"\\u2657",n:"\\u2658",p:"\\u2659"};
-var B={k:"\\u265A",q:"\\u265B",r:"\\u265C",b:"\\u265D",n:"\\u265E",p:"\\u265F"};return(c==="w"?W:B)[t]||"?"};
-function TL(sq){var col=sq.charCodeAt(0)-97;var rk=+sq.charAt(1);return{x:col*SZ,y:(8-rk)*SZ}};
-function XY(x,y){var c=(x/SZ)|0,r=(y/SZ)|0;if(c<0||c>7||r<0||r>7)return null;return F.charAt(c)+(8-r)};
-function Main(){Phaser.Scene.call(this,{key:"chs"});}
-Main.prototype=Object.create(Phaser.Scene.prototype);
-Main.prototype.create=function(){
-var game=new Chess(),me=this;this.sel=null;this.g0=this.add.graphics();this.gl=this.add.graphics();this.hs=[];var hud=document.getElementById("msg");
-function line(){if(game.game_over()){hud.textContent=game.in_checkmate()?"Checkmate · tap to reset":game.in_draw()?"Draw":"Over · tap";return;}
-hud.textContent=(game.turn()==="w"?"White":"Black")+(game.in_check()?" · CHECK":" · go")};line();
-me.go=function(){me.g0.clear();me.gl.clear();me.hs.forEach(function(z){try{z.destroy()}catch(e){}});me.hs=[];
-var r,c,u;for(r=0;r<8;r++)for(c=0;c<8;c++){u=(r+c)%2===0;me.g0.fillStyle(u?0xf0d9b5:0xb58863,1);me.g0.fillRect(c*SZ,r*SZ,SZ,SZ);}
-if(me.sel){var p=TL(me.sel);me.gl.fillStyle(0x00ff883a,1);me.gl.fillRect(p.x,p.y,SZ,SZ);
-game.moves({square:me.sel,verbose:1}).forEach(function(x){var o=TL(x.to);me.gl.fillStyle(0x00cc66,.9);me.gl.fillCircle(o.x+SZ*.5,o.y+SZ*.5,8)})}
-var bd=game.board();for(r=0;r<8;r++)for(c=0;c<8;c++){var pc=bd[r][c];if(!pc)continue;var lb=me.add.text(c*SZ+SZ*.5,r*SZ+SZ*.5,chars(pc.color,pc.type),
-{fontFamily:"Georgia,serif",fontSize:String(Math.floor(SZ*.76))+"px"});lb.setOrigin(.47,.52).setDepth(5);me.hs.push(lb)}line()};
-function boot(){game.reset();me.sel=null;me.go()};
-me.go();
-me.input.on("pointerdown",function(pt){var x=pt.worldX,y=pt.worldY;if(x<0||x>=W||y<0||y>=H)return;
-if(game.game_over()){boot();return;}
-var alg=XY(x,y);if(!alg)return;var T=game.turn();var hp=game.get(alg);
-if(me.sel){var m=game.move({from:me.sel,to:alg,promotion:"q"});
-if(!m)m=game.move({from:me.sel,to:alg});me.sel=null;
-if(m){line();me.go();return;}
-if(hp&&hp.color===T)me.sel=alg}else{if(hp&&hp.color===T)me.sel=alg}me.go()});};
-window.onload=function(){new Phaser.Game({type:Phaser.AUTO,width:W,height:H,parent:"g",scene:Main,backgroundColor:0x0a0f14,
-scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH}})};
-})();<\/script></body></html>`;
+/** Inline Phaser 3 mini-games; CDN scripts at runtime (see Arcade hub). Chess/Ludo ship as vendor-hosted WebViews instead. */
 
 export const PHASER_BREAKOUT_HTML = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>

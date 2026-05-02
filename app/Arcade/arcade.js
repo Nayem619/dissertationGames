@@ -10,18 +10,17 @@ import {
 } from "@/lib/useConsumePlayEntitlement";
 import {
   PHASER_BREAKOUT_HTML,
-  PHASER_CHESS_HTML,
   PHASER_MEMORY_HTML,
   PHASER_PONG_HTML,
 } from "./gamesHtml";
 import {
   PHASER_CONNECT4_HTML,
   PHASER_FLAPPY_HTML,
-  PHASER_LUDO_LITE_HTML,
   PHASER_SIMON_HTML,
 } from "./extraGamesHtml";
 import { dispatchPuzzleWebMessage } from "@/lib/puzzleBridge";
 import { PhaserInlineWebView } from "./PhaserWebGameShell";
+import { VendorArcadeWebView } from "./VendorArcadeWebView";
 import { PHASER_ARCADE_ROWS } from "./arcadeCatalog";
 
 import { hubStyles } from "./arcadeHubStyles";
@@ -32,28 +31,31 @@ function paramFirst(p, key) {
 }
 
 const HTML_BY_PLAY = {
-  chess: PHASER_CHESS_HTML,
   breakout: PHASER_BREAKOUT_HTML,
   memory: PHASER_MEMORY_HTML,
   pong: PHASER_PONG_HTML,
   flappy: PHASER_FLAPPY_HTML,
   simon: PHASER_SIMON_HTML,
   connect4: PHASER_CONNECT4_HTML,
-  ludo: PHASER_LUDO_LITE_HTML,
 };
 
 const ARCADE_ITEMS = PHASER_ARCADE_ROWS.map((row) => ({
   ...row,
-  html: HTML_BY_PLAY[row.play],
-})).filter((x) => x.html);
+  ...(row.vendorHosted
+    ? { vendorKind: row.play === "chess" || row.play === "ludo" ? row.play : null }
+    : { html: HTML_BY_PLAY[row.play] }),
+})).filter((x) => x.html || x.vendorKind);
 
 function ArcadeHub() {
   const router = useRouter();
   return (
     <View style={hubStyles.screen}>
       <ScrollView contentContainerStyle={hubStyles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={hubStyles.h1}>Phaser arcade</Text>
-        <Text style={hubStyles.sub}>HTML5 Phaser&nbsp;3 + chess.js. Same CDN pattern as Snake. Works offline only if CDN cached.</Text>
+        <Text style={hubStyles.h1}>Arcade</Text>
+        <Text style={hubStyles.sub}>
+          Chess &amp; Ludo open your hosted multiplayer builds (URLs in .env / Render). Classic
+          mini-games embed Phaser locally with CDN fallback.
+        </Text>
 
         {ARCADE_ITEMS.map((g) => (
           <TouchableOpacity
@@ -93,7 +95,7 @@ export default function ArcadeRoute() {
   const challengeTarget = Number(challengeTargetRaw);
 
   const item = ARCADE_ITEMS.find((x) => x.play === play);
-  const shellOpen = !!(item?.html);
+  const shellOpen = !!(item?.html || item?.vendorKind);
   const gate = useConsumePlayEntitlement(shellOpen ? "arcade" : "", {
     skip: !shellOpen,
   });
@@ -114,38 +116,56 @@ export default function ArcadeRoute() {
     chalLoggedRef.current = false;
   }, [play, challengeId]);
 
-  const onBridgeMessage = useCallback((msg) => {
-    if (!msg || msg.type !== "ARCADE_SCORE") return;
-    const key = typeof msg.game === "string" ? msg.game.toLowerCase() : "";
-    const map = {
-      breakout: "arcade_breakout",
-      memory: "arcade_memory",
-      pong: "arcade_pong",
-      flappy: "arcade_flappy",
-      simon: "arcade_simon",
-      connect4: "arcade_connect4",
-    };
-    const gameId = map[key] || msg.game;
-    if (!gameId) return;
-    void submitArcadeScore(gameId, msg.score, { difficulty: msg.difficulty ?? "standard" });
-    if (
-      challengeId &&
-      key === "flappy" &&
-      Number.isFinite(challengeTarget) &&
-      typeof msg.score === "number" &&
-      msg.score >= challengeTarget &&
-      !chalLoggedRef.current
-    ) {
-      chalLoggedRef.current = true;
-      void softAcceptChallenge(challengeId).then(() =>
-        Alert.alert("Challenge", `Score ${msg.score} ≥ ${Math.floor(challengeTarget)} — logged.`)
-      );
-    }
-  }, [challengeId, challengeTarget]);
+  const onBridgeMessage = useCallback(
+    (msg) => {
+      if (!msg || msg.type !== "ARCADE_SCORE") return;
+      const key = typeof msg.game === "string" ? msg.game.toLowerCase() : "";
+      const map = {
+        breakout: "arcade_breakout",
+        memory: "arcade_memory",
+        pong: "arcade_pong",
+        flappy: "arcade_flappy",
+        simon: "arcade_simon",
+        connect4: "arcade_connect4",
+      };
+      const gameId = map[key] || msg.game;
+      if (!gameId) return;
+      void submitArcadeScore(gameId, msg.score, { difficulty: msg.difficulty ?? "standard" });
+      if (
+        challengeId &&
+        key === "flappy" &&
+        Number.isFinite(challengeTarget) &&
+        typeof msg.score === "number" &&
+        msg.score >= challengeTarget &&
+        !chalLoggedRef.current
+      ) {
+        chalLoggedRef.current = true;
+        void softAcceptChallenge(challengeId).then(() =>
+          Alert.alert(
+            "Challenge",
+            `Score ${msg.score} ≥ ${Math.floor(challengeTarget)} — logged.`
+          )
+        );
+      }
+    },
+    [challengeId, challengeTarget]
+  );
 
   if (shellOpen) {
     if (gate.loading) return <PlayEntitlementSplash entitlementId="arcade" />;
     if (!gate.ok) return <View style={{ flex: 1, backgroundColor: "#0a0a0f" }} />;
+  }
+
+  if (item?.vendorKind) {
+    return (
+      <VendorArcadeWebView
+        kind={item.vendorKind}
+        title={item.title}
+        onBack={() => router.replace("/home")}
+        statusTint="#00ffaa"
+        onLeaderboard={undefined}
+      />
+    );
   }
 
   if (item?.html) {

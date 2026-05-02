@@ -1,11 +1,13 @@
 const { sessionMiddleware } = require('../config/session');
+const getAllowedCorsOrigins = require('../config/corsAllowed');
 
 const socketManager = {
     io: null,
     initialize(server) {
+        const allowedOrigins = getAllowedCorsOrigins();
         this.io = require('socket.io')(server, {
             cors: {
-                origin: 'http://localhost:3000',
+                origin: allowedOrigins,
                 credentials: true,
             },
             allowRequest: (req, callback) => {
