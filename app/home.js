@@ -27,16 +27,35 @@ const PHASER_ACCENT = {
   border: "rgba(0, 255, 136, 0.32)",
 };
 
-const PHASER_HOME_CARDS = PHASER_ARCADE_ROWS.map((g) => ({
-  id: `arcade_${g.play}`,
-  name: `${g.title} · HTML5`,
-  icon: g.emoji,
-  href: { pathname: "/Arcade/arcade", params: { play: g.play } },
-  route: null,
-  accent: { ...PHASER_ACCENT, iconBg: g.color },
-}));
+function arcadeRowToHomeCard(g) {
+  return {
+    id: `arcade_${g.play}`,
+    name: `${g.title} · HTML5`,
+    icon: g.emoji,
+    href: { pathname: "/Arcade/arcade", params: { play: g.play } },
+    route: null,
+    accent: { ...PHASER_ACCENT, iconBg: g.color },
+  };
+}
+
+const chessRow = PHASER_ARCADE_ROWS.find((g) => g.play === "chess");
+const ludoRow = PHASER_ARCADE_ROWS.find((g) => g.play === "ludo");
+const HOME_ARCADE_TOP = [chessRow, ludoRow].filter(Boolean).map(arcadeRowToHomeCard);
+const HOME_ARCADE_REST = PHASER_ARCADE_ROWS.filter(
+  (g) => g.play !== "chess" && g.play !== "ludo"
+).map(arcadeRowToHomeCard);
+
+const TRIVIA_HOME_CARD = {
+  id: "trivia",
+  name: "TRIVIA",
+  icon: "🧠",
+  route: "/trivia/trivia",
+  accent: { bg: "rgba(255, 0, 255, 0.12)", border: "rgba(255, 0, 255, 0.4)", iconBg: "#d946b8" },
+};
 
 const GAMES = [
+  ...HOME_ARCADE_TOP,
+  TRIVIA_HOME_CARD,
   {
     id: "puzzle",
     name: "PUZZLE LADDER · Flow / Pipe / Ice",
@@ -73,20 +92,13 @@ const GAMES = [
       iconBg: "#7c3aed",
     },
   },
-  ...PHASER_HOME_CARDS,
+  ...HOME_ARCADE_REST,
   {
     id: "tictactoe",
     name: "TIC TAC TOE",
     icon: "⚔️",
     route: "/TicTacToe/tictactoe",
     accent: { bg: "rgba(0, 255, 136, 0.2)", border: "rgba(0, 255, 136, 0.45)", iconBg: "#00cc99" },
-  },
-  {
-    id: "trivia",
-    name: "TRIVIA",
-    icon: "🧠",
-    route: "/trivia/trivia",
-    accent: { bg: "rgba(255, 0, 255, 0.12)", border: "rgba(255, 0, 255, 0.4)", iconBg: "#d946b8" },
   },
   {
     id: "snake",

@@ -13,6 +13,14 @@ export const PHASER_ARCADE_ROWS = [
     lb: null,
   },
   {
+    play: "ludo",
+    title: "LUDO LITE",
+    emoji: "🎲",
+    blurb: "Phaser sprint loop · capture · hot-seat · tap purple.",
+    color: "#7c1485",
+    lb: null,
+  },
+  {
     play: "breakout",
     title: "BREAKOUT",
     emoji: "🧱",
@@ -59,13 +67,5 @@ export const PHASER_ARCADE_ROWS = [
     blurb: "Two-player hot-seat · drops to bottom.",
     color: "#15803d",
     lb: "arcade_connect4",
-  },
-  {
-    play: "ludo",
-    title: "LUDO LITE",
-    emoji: "🎲",
-    blurb: "Phaser sprint loop · capture · hot-seat · tap purple.",
-    color: "#7c1485",
-    lb: null,
   },
 ];

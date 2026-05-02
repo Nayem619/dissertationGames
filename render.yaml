@@ -38,3 +38,9 @@ services:
         sync: false
       - key: EXPO_PUBLIC_OPENAI_API_KEY
         sync: false
+      - key: EXPO_PUBLIC_OPENAI_BASE_URL
+        sync: false
+      - key: EXPO_PUBLIC_OPENAI_MODEL
+        sync: false
+      - key: EXPO_PUBLIC_TRIVIA_GENERATE_URL
+        sync: false

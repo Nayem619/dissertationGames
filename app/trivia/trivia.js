@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { getAuth } from "firebase/auth";
 import {
@@ -12,6 +13,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -90,12 +92,71 @@ const shuffleArray = (array) => {
 };
 
 function getOpenAIKey() {
-  const k = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-  return typeof k === "string" ? k.trim() : "";
+  const extra = Constants.expoConfig?.extra;
+  const raw =
+    (typeof process.env.EXPO_PUBLIC_OPENAI_API_KEY === "string"
+      ? process.env.EXPO_PUBLIC_OPENAI_API_KEY
+      : "") ||
+    (typeof extra?.openaiApiKey === "string" ? extra.openaiApiKey : "") ||
+    (typeof process.env.EXPO_PUBLIC_OPENAI_KEY === "string"
+      ? process.env.EXPO_PUBLIC_OPENAI_KEY
+      : "");
+  let k = String(raw || "").trim();
+  if (/^bearer\s+/i.test(k)) k = k.replace(/^bearer\s+/i, "").trim();
+  return k;
+}
+
+function getTriviaProxyUrl() {
+  const extra = Constants.expoConfig?.extra;
+  const u =
+    (typeof process.env.EXPO_PUBLIC_TRIVIA_GENERATE_URL === "string"
+      ? process.env.EXPO_PUBLIC_TRIVIA_GENERATE_URL
+      : "") ||
+    (typeof extra?.triviaGenerateUrl === "string" ? extra.triviaGenerateUrl : "");
+  return String(u || "").trim();
+}
+
+function getOpenAIModel() {
+  const extra = Constants.expoConfig?.extra;
+  const m =
+    process.env.EXPO_PUBLIC_OPENAI_MODEL ||
+    (typeof extra?.openaiModel === "string" ? extra.openaiModel : "") ||
+    "gpt-4o-mini";
+  return String(m).trim() || "gpt-4o-mini";
+}
+
+function getOpenAIChatCompletionsUrl() {
+  const extra = Constants.expoConfig?.extra;
+  const raw =
+    process.env.EXPO_PUBLIC_OPENAI_BASE_URL ||
+    (typeof extra?.openaiBaseUrl === "string" ? extra.openaiBaseUrl : "") ||
+    "";
+  let base = String(raw || "").trim().replace(/\/$/, "");
+  if (!base) base = "https://api.openai.com/v1";
+  return `${base}/chat/completions`;
+}
+
+/** Proxy works in web + native (no OpenAI CORS). Direct OpenAI only on iOS/Android. */
+function canUseOpenAIDirect() {
+  return !!(getOpenAIKey() && Platform.OS !== "web");
+}
+
+function hasTriviaAiBackend() {
+  return !!getTriviaProxyUrl() || canUseOpenAIDirect();
+}
+
+async function finalizeGeneratedQuestions(difficulty, count, normalized) {
+  if (normalized.length < count) {
+    throw new Error("AI returned too few valid questions. Try again.");
+  }
+  const slice = normalized.slice(0, count);
+  for (const q of slice) {
+    await saveQuestionToFirebase(difficulty, q);
+  }
+  return slice;
 }
 
 async function fetchFromFirebase(difficulty, count) {
-  if (!firebaseIsConfigured) return [];
   const ref = collection(db, TRIVIA_COLLECTION);
   const qy = query(ref, where("difficulty", "==", difficulty));
   // #region agent log
@@ -152,16 +213,63 @@ async function saveQuestionToFirebase(difficulty, item) {
   }
 }
 
-async function generateWithOpenai(difficulty, count) {
+async function fetchQuestionsViaProxy(proxyUrl, difficulty, count) {
+  const apiKey = getOpenAIKey();
+  const res = await promiseWithTimeout(
+    fetch(proxyUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+      },
+      body: JSON.stringify({ difficulty, count }),
+    }),
+    OPENAI_FETCH_TIMEOUT_MS + 2500,
+    "Trivia proxy"
+  );
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Trivia proxy ${res.status}: ${errText.slice(0, 200)}`);
+  }
+  const payload = await res.json();
+  let rawList = Array.isArray(payload?.questions) ? payload.questions : [];
+  if (
+    rawList.length === 0 &&
+    payload?.choices?.[0]?.message?.content &&
+    typeof payload.choices[0].message.content === "string"
+  ) {
+    try {
+      const parsed = JSON.parse(payload.choices[0].message.content);
+      rawList = Array.isArray(parsed?.questions) ? parsed.questions : [];
+    } catch {
+      rawList = [];
+    }
+  }
+  const normalized = rawList
+    .map((q) => normalizeQuestion(q))
+    .filter(Boolean)
+    .slice(0, count);
+  return await finalizeGeneratedQuestions(difficulty, count, normalized);
+}
+
+async function fetchQuestionsViaOpenAIDirect(difficulty, count) {
   const apiKey = getOpenAIKey();
   if (!apiKey) {
     throw new Error(
-      "Missing OpenAI key. Set EXPO_PUBLIC_OPENAI_API_KEY in .env and restart Expo."
+      "Missing OpenAI key. Set EXPO_PUBLIC_OPENAI_API_KEY, rebuild the app, then try again."
+    );
+  }
+  if (Platform.OS === "web") {
+    throw new Error(
+      "This web build cannot call OpenAI from the browser (CORS). Deploy EXPO_PUBLIC_TRIVIA_GENERATE_URL to a small HTTPS endpoint that POSTs to OpenAI server-side, or use the iOS/Android app."
     );
   }
 
   const difficultyLabel =
     difficulty === "easy" ? "easy" : difficulty === "hard" ? "hard" : "medium";
+  const model = getOpenAIModel();
+  const url = getOpenAIChatCompletionsUrl();
 
   const ac = typeof AbortController !== "undefined" ? new AbortController() : null;
   const deadlineTimer = setTimeout(() => {
@@ -174,14 +282,14 @@ async function generateWithOpenai(difficulty, count) {
   try {
     // #region agent log
     __DEBUG_INGEST({
-      location: "trivia.js:generateWithOpenai:fetch:start",
+      location: "trivia.js:openai:direct:start",
       message: "openai fetch start",
       hypothesisId: "H3-openai-hang",
-      data: { difficulty, count },
+      data: { difficulty, count, model: String(model).slice(0, 40) },
     });
     // #endregion
     res = await promiseWithTimeout(
-      fetch("https://api.openai.com/v1/chat/completions", {
+      fetch(url, {
         method: "POST",
         ...(ac ? { signal: ac.signal } : {}),
         headers: {
@@ -189,7 +297,7 @@ async function generateWithOpenai(difficulty, count) {
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model,
           response_format: { type: "json_object" },
           messages: [
             {
@@ -211,7 +319,7 @@ async function generateWithOpenai(difficulty, count) {
   } catch (err) {
     // #region agent log
     __DEBUG_INGEST({
-      location: "trivia.js:generateWithOpenai:fetch:error",
+      location: "trivia.js:openai:direct:error",
       message: "openai fetch error",
       hypothesisId: "H3-openai-hang",
       data: {
@@ -229,14 +337,12 @@ async function generateWithOpenai(difficulty, count) {
   } finally {
     clearTimeout(deadlineTimer);
   }
-  // #region agent log
   __DEBUG_INGEST({
-    location: "trivia.js:generateWithOpenai:fetch:done",
+    location: "trivia.js:openai:direct:done",
     message: "openai fetch complete",
     hypothesisId: "H3-openai-hang",
     data: { status: res?.status, ok: res?.ok },
   });
-  // #endregion
 
   if (!res.ok) {
     const errText = await res.text();
@@ -253,22 +359,24 @@ async function generateWithOpenai(difficulty, count) {
     .map((q) => normalizeQuestion(q))
     .filter(Boolean)
     .slice(0, count);
+  return await finalizeGeneratedQuestions(difficulty, count, normalized);
+}
 
-  if (normalized.length < count) {
-    throw new Error("OpenAI returned too few valid questions. Try again.");
+/** Proxy (any platform) or direct OpenAI (native only). */
+async function generateQuestionBatch(difficulty, count) {
+  const proxy = getTriviaProxyUrl();
+  if (proxy) {
+    return fetchQuestionsViaProxy(proxy, difficulty, count);
   }
-
-  for (const q of normalized) {
-    await saveQuestionToFirebase(difficulty, q);
-  }
-
-  return normalized;
+  return fetchQuestionsViaOpenAIDirect(difficulty, count);
 }
 
 /** Mix Firestore and OpenAI so cache absorbs part of the traffic. */
 async function buildQuizForDifficulty(difficulty) {
   const n = TRIVIA_QUIZ_LENGTH;
   const apiKey = getOpenAIKey();
+  const proxy = getTriviaProxyUrl();
+  const aiOk = hasTriviaAiBackend();
   const preferFirebase =
     firebaseIsConfigured && Math.random() < FIREBASE_SOURCE_PROBABILITY;
   // #region agent log
@@ -279,16 +387,19 @@ async function buildQuizForDifficulty(difficulty) {
     data: {
       firebaseIsConfigured,
       hasOpenAIKey: !!apiKey,
+      hasProxy: !!proxy,
+      canDirectOpenAI: canUseOpenAIDirect(),
       preferFirebase,
       difficulty,
     },
   });
   // #endregion
 
-  if (!firebaseIsConfigured && !apiKey) {
+  if (!firebaseIsConfigured && !aiOk) {
     throw new Error(
-      "Firebase is not configured in this deployment and no OpenAI key is set. " +
-        "On Render: set EXPO_PUBLIC_FIREBASE_* (and optionally EXPO_PUBLIC_OPENAI_API_KEY), then redeploy."
+      "Firebase is not configured in this deployment and trivia AI is unavailable. " +
+        "For mobile: set EXPO_PUBLIC_OPENAI_API_KEY and rebuild. " +
+        "For web: set EXPO_PUBLIC_TRIVIA_GENERATE_URL (HTTPS proxy) or use cached questions in Firebase, then redeploy."
     );
   }
 
@@ -298,26 +409,28 @@ async function buildQuizForDifficulty(difficulty) {
       return shuffleArray(fromCache).slice(0, n);
     }
     const need = n - fromCache.length;
-    if (!apiKey) {
+    if (!aiOk) {
       if (fromCache.length === 0) {
         throw new Error(
-          "No trivia in Firebase and no OpenAI key. Set EXPO_PUBLIC_OPENAI_API_KEY on Render (or in .env for local)."
+          "No trivia in Firebase and AI is not configured. " +
+            "Mobile: set EXPO_PUBLIC_OPENAI_API_KEY. Web: set EXPO_PUBLIC_TRIVIA_GENERATE_URL to a server that returns { questions: [...] }."
         );
       }
       return shuffleArray([...fromCache]).slice(0, fromCache.length);
     }
-    const fresh = await generateWithOpenai(difficulty, need);
+    const fresh = await generateQuestionBatch(difficulty, need);
     return shuffleArray([...fromCache, ...fresh]).slice(0, n);
   }
 
-  if (apiKey) {
-    return await generateWithOpenai(difficulty, n);
+  if (aiOk) {
+    return await generateQuestionBatch(difficulty, n);
   }
 
   const fromCache = await fetchFromFirebase(difficulty, n);
   if (fromCache.length < n) {
     throw new Error(
-      "Not enough cached trivia and no OpenAI key. Set EXPO_PUBLIC_OPENAI_API_KEY on Render (or .env locally) or add questions to trivia_questions in Firebase."
+      "Not enough cached trivia and AI is not available on this platform/build. " +
+        "Add questions in Firestore or configure OpenAI (native) / EXPO_PUBLIC_TRIVIA_GENERATE_URL (web)."
     );
   }
   return fromCache;
