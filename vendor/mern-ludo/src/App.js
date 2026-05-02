@@ -8,7 +8,7 @@ import LoginPage from './components/LoginPage/LoginPage';
 export const PlayerDataContext = createContext();
 export const SocketContext = createContext();
 
-/** Production (Render): set REACT_APP_SOCKET_URL to the backend HTTPS origin (e.g. https://ludo-api.onrender.com). */
+/** CRA prod bundle: Socket.IO on same HTTPS origin when Express serves `build/` (Render single service). Override with REACT_APP_SOCKET_URL for split deploys. */
 function socketOrigin() {
     const fromEnv =
         typeof process !== 'undefined' && process.env.REACT_APP_SOCKET_URL
@@ -16,6 +16,9 @@ function socketOrigin() {
             : '';
     if (fromEnv) return fromEnv;
     if (typeof window !== 'undefined') {
+        if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
+            return window.location.origin;
+        }
         return `http://${window.location.hostname}:8080`;
     }
     return 'http://localhost:8080';

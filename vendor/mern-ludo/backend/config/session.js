@@ -5,17 +5,21 @@ const store = new MongoDBStore({
     uri: process.env.CONNECTION_URI,
     collection: 'sessions',
 });
+
+const isProd = process.env.NODE_ENV === 'production';
+
 const sessionMiddleware = session({
     store: store,
     credentials: true,
     cookie: {
         httpOnly: false,
-        secure: false,
+        secure: isProd,
+        sameSite: isProd ? 'none' : 'lax',
+        maxAge: 1000 * 60 * 60 * 24 * 7,
     },
-    secret: 'secret',
+    secret: process.env.SESSION_SECRET || 'change-me-in-production',
     saveUninitialized: true,
     resave: true,
-    maxAge: 20000,
 });
 
 const wrap = expressMiddleware => (socket, next) => expressMiddleware(socket.request, {}, next);

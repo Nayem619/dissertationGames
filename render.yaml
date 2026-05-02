@@ -42,5 +42,26 @@ services:
         sync: false
       - key: EXPO_PUBLIC_OPENAI_MODEL
         sync: false
+      - key: EXPO_PUBLIC_VENDOR_CHESS_URL
+        value: https://ches.su
+      - key: EXPO_PUBLIC_VENDOR_LUDO_URL
+        value: https://dissertationgames-ludo.onrender.com
       - key: EXPO_PUBLIC_TRIVIA_GENERATE_URL
         sync: false
+
+  - type: web
+    name: dissertationgames-ludo
+    runtime: docker
+    dockerfilePath: ./vendor/mern-ludo/Dockerfile
+    dockerContext: ./vendor/mern-ludo
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Include every origin that opens this app in a browser/WebView player.
+      - key: CORS_ORIGINS
+        value: https://dissertationgames-ludo.onrender.com,https://dissertationgames.onrender.com,http://localhost:3000
+      # Atlas (or other) Mongo URI — mandatory. Allow 0.0.0.0/0 inbound on Atlas for Render’s IPs or use VPC.
+      - key: CONNECTION_URI
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true

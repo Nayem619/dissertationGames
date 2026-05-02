@@ -1,19 +1,31 @@
-FROM node:14 as frontend
-WORKDIR /app
-COPY . /app
-RUN npm install --production
+# Production: CRA bundle + Express + Socket.IO on one PORT (WebView-safe same-origin).
+FROM node:20-bookworm-slim AS cra
+
+WORKDIR /src
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY public ./public
+COPY src ./src
+
+ENV NODE_ENV=production
 RUN npm run build
 
-FROM node:14 as backend
+FROM node:20-bookworm-slim AS run
+
+WORKDIR /app/backend
+COPY backend/package.json backend/package-lock.json ./
+RUN npm ci --omit=dev
+COPY backend/ ./
+
+# CRA output at repo-root `build`; server resolves ../build from backend/.
 WORKDIR /app
-COPY /backend /app
-RUN npm install
+COPY --from=cra /src/build ./build
 
-FROM node:14
-WORKDIR /app
-COPY --from=backend /app /app/
-COPY --from=frontend /app/build /app/build
+WORKDIR /app/backend
 
-EXPOSE 8080
+ENV NODE_ENV=production
 
-CMD ["npm", "run", "start"]
+EXPOSE 10000
+ENV PORT=10000
+
+CMD ["node", "server.js"]
