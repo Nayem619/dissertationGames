@@ -66,14 +66,6 @@ const GAMES = [
     accent: { bg: "rgba(0, 212, 255, 0.12)", border: "rgba(0, 212, 255, 0.45)", iconBg: "#0099cc" },
   },
   {
-    id: "gemmatch",
-    name: "GEM MATCH",
-    icon: "💎",
-    href: { pathname: "/Snake/snake", params: { play: "gem" } },
-    route: null,
-    accent: { bg: "rgba(236, 72, 153, 0.15)", border: "rgba(244, 114, 182, 0.55)", iconBg: "#be185d" },
-  },
-  {
     id: "runner",
     name: "ENDLESS RUNNER",
     icon: "🏃",

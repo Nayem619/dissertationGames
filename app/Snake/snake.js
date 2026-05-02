@@ -21,10 +21,6 @@ function getSnakeWebUrl() {
   return trimUrl(process.env.EXPO_PUBLIC_SNAKE_URL || "");
 }
 
-function getGemMatchWebUrl() {
-  return trimUrl(process.env.EXPO_PUBLIC_GEM_MATCH_URL || "");
-}
-
 const commonWv = {
   javaScriptEnabled: true,
   domStorageEnabled: true,
@@ -186,55 +182,9 @@ function PhaserSnakeWebView() {
   );
 }
 
-function GameTopRowSimple({ onBack, tint = "#fce7f3" }) {
-  const insets = useSafeAreaInsets();
-  return (
-    <View
-      style={[
-        s.topRow,
-        { paddingTop: insets.top + 6, paddingLeft: 6, paddingRight: 8 },
-      ]}
-    >
-      <TouchableOpacity onPress={onBack} style={s.iconHit} accessibilityLabel="Back">
-        <Ionicons name="chevron-back" size={32} color={tint} />
-      </TouchableOpacity>
-      <View style={{ flex: 1 }} />
-    </View>
-  );
-}
-
-function GemMatchWebView() {
-  const gate = useConsumePlayEntitlement("gemmatch");
-  if (gate.loading) return <PlayEntitlementSplash entitlementId="gemmatch" />;
-  if (!gate.ok) return null;
-  const router = useRouter();
-  const url = getGemMatchWebUrl();
-  if (!url) {
-    return (
-      <View style={gstyles.gameRoot}>
-        <GameTopRowSimple onBack={() => router.replace("/Snake/snake")} />
-        <View style={gstyles.missingBox}>
-          <Text style={gstyles.missingTitle}>Gem Match URL not set</Text>
-          <Text style={gstyles.missingBody}>
-            Add EXPO_PUBLIC_GEM_MATCH_URL to your .env (see web-games/HOW_TO_VERCEL.md), then
-            restart Expo.
-          </Text>
-        </View>
-      </View>
-    );
-  }
-  return (
-    <View style={gstyles.gameRoot}>
-      <GameTopRowSimple onBack={() => router.replace("/Snake/snake")} />
-      <WebView source={{ uri: url }} style={gstyles.wv} {...commonWv} allowsFullscreenVideo={false} />
-    </View>
-  );
-}
-
 function SnakeHub() {
   const router = useRouter();
   const snakeRemote = getSnakeWebUrl();
-  const gemRemote = getGemMatchWebUrl();
   return (
     <View style={hubStyles.screen}>
       <ScrollView contentContainerStyle={hubStyles.scroll} showsVerticalScrollIndicator={false}>
@@ -244,16 +194,10 @@ function SnakeHub() {
           iliyaZelenko (in <Text style={hubStyles.mono}>web-games/phaser3-snake-cordova</Text>
           ) — deploy it to Vercel, then set <Text style={hubStyles.mono}>EXPO_PUBLIC_SNAKE_URL</Text>{" "}
           in <Text style={hubStyles.mono}>.env</Text>. If that is not set, the app uses a bundled
-          Phaser fallback (needs internet for CDNs).{"\n\n"}
-          <Text style={hubStyles.strong}>Gem Match</Text>: Phaser 3 match-3 in{" "}
-          <Text style={hubStyles.mono}>web-games/phaser3-match3</Text> — deploy its{" "}
-          <Text style={hubStyles.mono}>dist</Text> folder, then set{" "}
-          <Text style={hubStyles.mono}>EXPO_PUBLIC_GEM_MATCH_URL</Text>.
+          Phaser fallback (needs internet for CDNs).
         </Text>
         <Text style={hubStyles.pSmall}>
           Snake remote: {snakeRemote ? "on (EXPO_PUBLIC_SNAKE_URL)" : "off (bundled fallback)"}
-          {"\n"}
-          Gem URL: {gemRemote ? "on" : "not set — add to .env to play"}
         </Text>
         <TouchableOpacity
           style={hubStyles.primary}
@@ -261,15 +205,6 @@ function SnakeHub() {
         >
           <Text style={hubStyles.primaryT}>
             {snakeRemote ? "Play Snake (Vercel)" : "Play Snake (bundled Phaser)"}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[hubStyles.gemBtn, !gemRemote && hubStyles.gemBtnOff]}
-          disabled={!gemRemote}
-          onPress={() => router.replace({ pathname: "/Snake/snake", params: { play: "gem" } })}
-        >
-          <Text style={hubStyles.gemBtnT}>
-            {gemRemote ? "Play Gem Match (Vercel)" : "Gem Match (set EXPO_PUBLIC_GEM_MATCH_URL)"}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -290,7 +225,6 @@ export default function SnakeEntry() {
   const p = useLocalSearchParams();
   const play = paramFirst(p, "play");
   if (play === "1" || play === "snake") return <PhaserSnakeWebView />;
-  if (play === "gem") return <GemMatchWebView />;
   return <SnakeHub />;
 }
 
@@ -299,14 +233,6 @@ const s = StyleSheet.create({
   wv: { flex: 1, backgroundColor: "#0d1117" },
   topRow: { flexDirection: "row", alignItems: "center", width: "100%", zIndex: 3 },
   iconHit: { padding: 6 },
-});
-
-const gstyles = StyleSheet.create({
-  gameRoot: { flex: 1, backgroundColor: "#1a0a1a" },
-  wv: { flex: 1, backgroundColor: "#000" },
-  missingBox: { flex: 1, padding: 20, justifyContent: "center" },
-  missingTitle: { color: "#fda4af", fontSize: 20, fontWeight: "800", marginBottom: 10 },
-  missingBody: { color: "#e7e5e4", lineHeight: 22 },
 });
 
 const hubStyles = StyleSheet.create({
@@ -331,9 +257,6 @@ const hubStyles = StyleSheet.create({
     marginBottom: 10,
   },
   primaryT: { color: "#fff", fontWeight: "800", fontSize: 17 },
-  gemBtn: { backgroundColor: "#be185d", padding: 16, borderRadius: 12, alignItems: "center", marginBottom: 10 },
-  gemBtnOff: { opacity: 0.55 },
-  gemBtnT: { color: "#fff", fontWeight: "800", fontSize: 17 },
   secondary: { borderWidth: 2, borderColor: "#1e4fe0", padding: 14, borderRadius: 12, alignItems: "center", marginBottom: 12 },
   secondaryT: { color: "#1e4fe0", fontWeight: "700" },
   back: { backgroundColor: "#6c757d", padding: 14, borderRadius: 10, alignItems: "center" },

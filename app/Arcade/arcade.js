@@ -18,7 +18,7 @@ function ArcadeHub() {
         <Text style={hubStyles.sub}>
           {hasGames
             ? "Classic mini-games run Phaser locally with CDN fallback · scores can post to the arcade leaderboards where listed."
-            : "No Phaser arcade mini-games are listed here at the moment — use Snake / Gem Match (WebView) from the Snake card if configured."}
+            : "No Phaser arcade mini-games are listed here at the moment — use Snake from the Snake card if configured."}
         </Text>
 
         {hasGames &&
