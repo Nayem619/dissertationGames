@@ -1,14 +1,7 @@
 import Constants from "expo-constants";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { getAuth } from "firebase/auth";
-import {
-  addDoc,
-  collection,
-  getDocs,
-  query,
-  serverTimestamp,
-  where,
-} from "firebase/firestore";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -25,17 +18,12 @@ import {
   useConsumePlayEntitlement,
 } from "@/lib/useConsumePlayEntitlement";
 import { getISOWeekKey } from "../../lib/weekKey";
-import { db, firebaseIsConfigured } from "../../constants/firebase";
+import { db } from "../../constants/firebase";
 import { softAcceptChallenge } from "@/lib/challenges";
 
 const auth = getAuth();
 
-const TRIVIA_COLLECTION = "trivia_questions";
 const TRIVIA_QUIZ_LENGTH = 5;
-/** When AI is off, ~50% pulls from Firestore cache first (saves reads). Ignored if AI is configured. */
-const FIREBASE_SOURCE_PROBABILITY = 0.5;
-/** Avoid infinite spinner when Firebase is stubbed/disabled or the network hangs. */
-const FIRESTORE_QUERY_TIMEOUT_MS = 45_000;
 const OPENAI_FETCH_TIMEOUT_MS = 60_000;
 
 // #region agent log
@@ -80,15 +68,6 @@ const normalizeQuestion = (raw) => {
   if (!question || options.length < 2 || !answer) return null;
   if (!options.includes(answer)) return null;
   return { question, options, answer };
-};
-
-const shuffleArray = (array) => {
-  const copied = [...array];
-  for (let i = copied.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copied[i], copied[j]] = [copied[j], copied[i]];
-  }
-  return copied;
 };
 
 function getOpenAIKey() {
@@ -145,72 +124,11 @@ function hasTriviaAiBackend() {
   return !!getTriviaProxyUrl() || canUseOpenAIDirect();
 }
 
-async function finalizeGeneratedQuestions(difficulty, count, normalized) {
+function finalizeGeneratedQuestions(count, normalized) {
   if (normalized.length < count) {
     throw new Error("AI returned too few valid questions. Try again.");
   }
-  const slice = normalized.slice(0, count);
-  for (const q of slice) {
-    await saveQuestionToFirebase(difficulty, q);
-  }
-  return slice;
-}
-
-async function fetchFromFirebase(difficulty, count) {
-  const ref = collection(db, TRIVIA_COLLECTION);
-  const qy = query(ref, where("difficulty", "==", difficulty));
-  // #region agent log
-  const _t0 = Date.now();
-  __DEBUG_INGEST({
-    location: "trivia.js:fetchFromFirebase:start",
-    message: "firestore query start",
-    hypothesisId: "H1-stub-firestore-hang",
-    data: { difficulty, count },
-  });
-  // #endregion
-  const snap = await promiseWithTimeout(
-    getDocs(qy),
-    FIRESTORE_QUERY_TIMEOUT_MS,
-    "Loading trivia from Firebase"
-  );
-  // #region agent log
-  __DEBUG_INGEST({
-    location: "trivia.js:fetchFromFirebase:done",
-    message: "firestore query done",
-    hypothesisId: "H1-stub-firestore-hang",
-    data: {
-      difficulty,
-      docs: snap.docs.length,
-      elapsedMs: Date.now() - _t0,
-    },
-  });
-  // #endregion
-  const list = snap.docs
-    .map((d) => {
-      const data = d.data();
-      return normalizeQuestion({
-        question: data.question,
-        options: data.options,
-        answer: data.answer,
-      });
-    })
-    .filter(Boolean);
-  return shuffleArray(list).slice(0, count);
-}
-
-async function saveQuestionToFirebase(difficulty, item) {
-  if (!firebaseIsConfigured) return;
-  const normalized = normalizeQuestion(item);
-  if (!normalized) return;
-  try {
-    await addDoc(collection(db, TRIVIA_COLLECTION), {
-      ...normalized,
-      difficulty,
-      createdAt: serverTimestamp(),
-    });
-  } catch (_) {
-    // Signed-out users can't write trivia_questions; quiz still playable.
-  }
+  return normalized.slice(0, count);
 }
 
 async function fetchQuestionsViaProxy(proxyUrl, difficulty, count) {
@@ -250,7 +168,7 @@ async function fetchQuestionsViaProxy(proxyUrl, difficulty, count) {
     .map((q) => normalizeQuestion(q))
     .filter(Boolean)
     .slice(0, count);
-  return await finalizeGeneratedQuestions(difficulty, count, normalized);
+  return finalizeGeneratedQuestions(count, normalized);
 }
 
 async function fetchQuestionsViaOpenAIDirect(difficulty, count) {
@@ -359,7 +277,7 @@ async function fetchQuestionsViaOpenAIDirect(difficulty, count) {
     .map((q) => normalizeQuestion(q))
     .filter(Boolean)
     .slice(0, count);
-  return await finalizeGeneratedQuestions(difficulty, count, normalized);
+  return finalizeGeneratedQuestions(count, normalized);
 }
 
 /** Proxy (any platform) or direct OpenAI (native only). */
@@ -371,7 +289,7 @@ async function generateQuestionBatch(difficulty, count) {
   return fetchQuestionsViaOpenAIDirect(difficulty, count);
 }
 
-/** Prefer fresh AI questions whenever the app can call AI; Firestore is fallback only. */
+/** Trivia questions come only from AI (proxy on web, direct on native). */
 async function buildQuizForDifficulty(difficulty) {
   const n = TRIVIA_QUIZ_LENGTH;
   const apiKey = getOpenAIKey();
@@ -383,65 +301,23 @@ async function buildQuizForDifficulty(difficulty) {
     message: "branch",
     hypothesisId: "H2-branch",
     data: {
-      firebaseIsConfigured,
       hasOpenAIKey: !!apiKey,
       hasProxy: !!proxy,
       canDirectOpenAI: canUseOpenAIDirect(),
       aiOk,
-      aiFirst: aiOk,
       difficulty,
     },
   });
   // #endregion
 
-  if (!firebaseIsConfigured && !aiOk) {
+  if (!aiOk) {
     throw new Error(
-      "Firebase is not configured in this deployment and trivia AI is unavailable. " +
-        "For mobile: set EXPO_PUBLIC_OPENAI_API_KEY and rebuild. " +
-        "For web: set EXPO_PUBLIC_TRIVIA_GENERATE_URL (HTTPS proxy) or use cached questions in Firebase, then redeploy."
+      "Trivia needs AI. Mobile: set EXPO_PUBLIC_OPENAI_API_KEY and rebuild. " +
+        "Web: set EXPO_PUBLIC_TRIVIA_GENERATE_URL (HTTPS proxy) and redeploy."
     );
   }
 
-  if (aiOk) {
-    try {
-      return await generateQuestionBatch(difficulty, n);
-    } catch (aiErr) {
-      if (!firebaseIsConfigured) {
-        throw aiErr;
-      }
-      const fromCache = await fetchFromFirebase(difficulty, n);
-      if (fromCache.length >= n) {
-        return shuffleArray(fromCache).slice(0, n);
-      }
-      throw aiErr;
-    }
-  }
-
-  const preferFirebase =
-    firebaseIsConfigured && Math.random() < FIREBASE_SOURCE_PROBABILITY;
-
-  if (preferFirebase) {
-    const fromCache = await fetchFromFirebase(difficulty, n);
-    if (fromCache.length >= n) {
-      return shuffleArray(fromCache).slice(0, n);
-    }
-    if (fromCache.length === 0) {
-      throw new Error(
-        "No trivia in Firebase and AI is not configured. " +
-          "Mobile: set EXPO_PUBLIC_OPENAI_API_KEY. Web: set EXPO_PUBLIC_TRIVIA_GENERATE_URL to a server that returns { questions: [...] }."
-      );
-    }
-    return shuffleArray([...fromCache]).slice(0, fromCache.length);
-  }
-
-  const fromCacheOnly = await fetchFromFirebase(difficulty, n);
-  if (fromCacheOnly.length < n) {
-    throw new Error(
-      "Not enough cached trivia and AI is not available on this platform/build. " +
-        "Add questions in Firestore or configure OpenAI (native) / EXPO_PUBLIC_TRIVIA_GENERATE_URL (web)."
-    );
-  }
-  return fromCacheOnly;
+  return generateQuestionBatch(difficulty, n);
 }
 
 function TriviaGameInner() {
