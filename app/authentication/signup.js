@@ -102,8 +102,8 @@ export default function Signup() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.card}>
-            <Text style={styles.brand}>NEXUS</Text>
-            <Text style={styles.subBrand}>GAMING ARENA</Text>
+            <Text style={styles.brand}>Play Hub</Text>
+            <Text style={styles.subBrand}>YOUR GAMES · ONE PLACE</Text>
 
             <View style={styles.segmentRow}>
               <Pressable
@@ -193,12 +193,12 @@ export default function Signup() {
               disabled={loading}
             >
               <Text style={styles.submitText}>
-                {loading ? "CREATING…" : "JOIN NEXUS"}
+                {loading ? "CREATING…" : "JOIN PLAY HUB"}
               </Text>
             </Pressable>
 
             <Text style={styles.footText}>
-              Already in the arena?{" "}
+              Already have an account?{" "}
               <Text
                 style={styles.link}
                 onPress={() => router.replace("/authentication/login")}

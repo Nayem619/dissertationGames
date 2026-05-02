@@ -419,7 +419,7 @@ export default function PuzzleLadderScreen() {
             <Text style={s.link}>{paused ? "Resume" : "Pause"}</Text>
           </TouchableOpacity>
         </View>
-        <Text style={s.h1}>Dissertation ladder</Text>
+        <Text style={s.h1}>Puzzle ladder</Text>
         <Text style={s.meta}>
           {ladderMode ? `Rotation ladder · stage ${level}` : `Solo puzzle · ${soloGame}`} ·{" "}
           {spinPhase === 0 ? "Cell flow" : spinPhase === 1 ? "Spin pipes" : "Ice glide"}

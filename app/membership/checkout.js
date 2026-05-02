@@ -67,7 +67,7 @@ export default function MembershipCheckoutDemo() {
 
     Alert.alert(
       "Payment simulated",
-      "No card data was stored. Your demo Nexus membership unlocks unlimited launches for thirty days locally.",
+      "No card data was stored. Your demo Play Hub Plus unlock runs unlimited launches for thirty days locally.",
       [
         {
           text: "Got it",
@@ -86,7 +86,7 @@ export default function MembershipCheckoutDemo() {
           For your dissertation reviewers: inputs live only in React state. Clearing this screen resets them — nothing touches AsyncStorage besides the membership unlocked flag created after Simulate pay.
         </Text>
         <Text style={styles.price}>
-          Nexus unlimited · {MEMBERSHIP_PRICE_GBP} · {MEMBERSHIP_INTERVAL}
+          Play Hub Plus · {MEMBERSHIP_PRICE_GBP} · {MEMBERSHIP_INTERVAL}
         </Text>
 
         <Text style={styles.label}>Name on card</Text>

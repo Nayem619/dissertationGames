@@ -47,9 +47,9 @@ export default function MembershipScreen() {
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={styles.h1}>Nexus membership</Text>
+        <Text style={styles.h1}>Play Hub membership</Text>
         <Text style={styles.sub}>
-          Dissertation prototype: each game unlocks{" "}
+          Play Hub keeps a demo free tier: each game unlocks{" "}
           <Text style={styles.bold}>{FREE_LAUNCHES_PER_GAME}</Text> free sessions (solo or online rooms),
           tracked on-device. Afterwards you need membership —{" "}
           <Text style={styles.bold}>

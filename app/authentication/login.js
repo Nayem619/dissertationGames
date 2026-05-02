@@ -53,8 +53,8 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.card}>
-            <Text style={styles.brand}>NEXUS</Text>
-            <Text style={styles.subBrand}>GAMING ARENA</Text>
+            <Text style={styles.brand}>Play Hub</Text>
+            <Text style={styles.subBrand}>YOUR GAMES · ONE PLACE</Text>
 
             <View style={styles.segmentRow}>
               <View style={styles.segmentActive}>
@@ -95,7 +95,7 @@ export default function LoginScreen() {
               style={({ pressed }) => [styles.submit, pressed && { opacity: 0.9 }]}
               onPress={handleLogin}
             >
-              <Text style={styles.submitText}>ENTER NEXUS</Text>
+              <Text style={styles.submitText}>SIGN IN TO PLAY HUB</Text>
             </Pressable>
 
             <Text style={styles.footText}>

@@ -75,7 +75,7 @@ function ArcadeHub() {
         ))}
 
         <TouchableOpacity style={hubStyles.backBtn} onPress={() => router.push("/home")} activeOpacity={0.85}>
-          <Text style={hubStyles.backBtnT}>Back to Nexus Arena</Text>
+          <Text style={hubStyles.backBtnT}>Back to Play Hub</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>

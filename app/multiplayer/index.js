@@ -96,7 +96,7 @@ export default function MultiplayerLobby() {
             <Text style={s.pt}>Set username</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.back} onPress={() => router.push("/social")}>
-            <Text style={s.bt}>Open Arena social hub</Text>
+            <Text style={s.bt}>Open Play Hub social</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.back} onPress={() => router.back()}>
             <Text style={s.bt}>Back</Text>
@@ -269,7 +269,7 @@ export default function MultiplayerLobby() {
           <Text style={s.jt}>Join room</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.back} onPress={() => router.push("/social")} disabled={busy}>
-          <Text style={[s.bt, { color: Nexus.cyan }]}>Arena social · history & friends</Text>
+          <Text style={[s.bt, { color: Nexus.cyan }]}>Play Hub social · history & friends</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.back} onPress={() => router.back()} disabled={busy}>
           <Text style={s.bt}>Back</Text>

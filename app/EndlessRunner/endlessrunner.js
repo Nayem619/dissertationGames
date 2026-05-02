@@ -660,7 +660,7 @@ function EndlessRunnerInner() {
             <Text style={styles.btnSecondaryT}>Board</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.btnSecondaryMuted} onPress={() => router.push("/home")}>
-            <Text style={styles.btnSecondaryMutedT}>Arena</Text>
+            <Text style={styles.btnSecondaryMutedT}>Play Hub</Text>
           </TouchableOpacity>
         </View>
 

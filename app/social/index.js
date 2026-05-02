@@ -32,7 +32,7 @@ export default function SocialHub() {
     <SafeAreaView style={s.safe} edges={["top"]}>
       <StatusBar style="light" />
       <ScrollView contentContainerStyle={s.pad}>
-        <Text style={s.h1}>Arena social</Text>
+        <Text style={s.h1}>Play Hub social</Text>
         <Text style={s.sub}>
           Your gamer tag {!tag ? "(not set)" : `@${tag}`}. Online rooms require a username so
           opponents show up clearly in history and search.

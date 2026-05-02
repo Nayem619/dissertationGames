@@ -34,7 +34,7 @@ export default function StudyDuelHostScreen() {
         `You are blind‑assigned letter ${row.challengerLetter}. Host the matching room next, then share the invite ID with your partner.`
       );
       try {
-        await Share.share({ message: `Nexus study duel\nID: ${row.duelId}\n${message}` });
+        await Share.share({ message: `Play Hub study duel\nID: ${row.duelId}\n${message}` });
       } catch {
         Alert.alert("Invite", `Copy manually:\n${row.duelId}\n${message}`);
       }

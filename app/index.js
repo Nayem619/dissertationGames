@@ -17,9 +17,9 @@ export default function Landing() {
 
         <View style={styles.card}>
           <Text style={styles.brand} allowFontScaling={false}>
-            NEXUS
+            Play Hub
           </Text>
-          <Text style={styles.subBrand}>GAMING ARENA</Text>
+          <Text style={styles.subBrand}>YOUR GAMES · ONE PLACE</Text>
           <Text style={styles.tagline}>
             Play fast, climb the board, and own the night.
           </Text>
@@ -28,7 +28,7 @@ export default function Landing() {
             style={({ pressed }) => [styles.btnArena, pressed && { opacity: 0.9 }]}
             onPress={() => router.push("/home")}
           >
-            <Text style={styles.btnArenaText}>ENTER NEXUS ARENA · GAMES</Text>
+            <Text style={styles.btnArenaText}>OPEN GAME LIBRARY</Text>
           </Pressable>
           <Text style={styles.guestHint}>No sign-in required for solo & arcade (web + app demos).</Text>
 

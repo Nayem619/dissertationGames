@@ -222,7 +222,7 @@ export default function SettingsScreen() {
           <Text style={s.btn3T}>Turn off simulated unlimited</Text>
         </TouchableOpacity>
 
-        <Text style={s.sec}>Dissertation tools</Text>
+        <Text style={s.sec}>Play Hub · study tools</Text>
         <Text style={s.p}>Analytics stores anonymous session payloads only if you consent.</Text>
         <View style={s.row}>
           <Text style={s.label}>Opt in to blind study duel lobby</Text>

@@ -245,7 +245,7 @@ export default function Home() {
         >
           <View style={styles.headerRow}>
             <View style={styles.headerTextWrap}>
-              <Text style={[styles.arenaTitle, prefs.largeUI && styles.arenaTitleLG]}>NEXUS ARENA</Text>
+              <Text style={[styles.arenaTitle, prefs.largeUI && styles.arenaTitleLG]}>PLAY HUB</Text>
               <Text style={[styles.welcome, prefs.largeUI && styles.welcomeLG]}>
                 Welcome back,{" "}
                 <Text style={styles.welcomeHighlight}>{displayName}</Text>
@@ -257,7 +257,7 @@ export default function Home() {
               >
                 <Text style={styles.tierBanner}>
                   {isMember()
-                    ? "★ Nexus Unlimited (demo) · tap details"
+                    ? "★ Play Hub Plus (demo) · tap details"
                     : `Free tier · ${FREE_LAUNCHES_PER_GAME} plays per title · ${MEMBERSHIP_PRICE_GBP}/mo after`}
                 </Text>
               </TouchableOpacity>
