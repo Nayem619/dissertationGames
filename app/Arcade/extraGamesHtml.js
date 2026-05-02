@@ -45,17 +45,12 @@ window.onload=function(){new Phaser.Game({type:Phaser.AUTO,width:W,height:H,pare
 /** Circular track, two counters, capture, need 6 to enter — hot-seat (not synced online). Inspired by classic Ludo. */
 export const PHASER_LUDO_LITE_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
 <style>html,body{margin:0;height:100%;background:#1f0f18}</style></head><body><div id="g"></div>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js" crossorigin="anonymous" onerror="(function(){try{window.ReactNativeWebView&&window.ReactNativeWebView.postMessage(JSON.stringify({type:'ARCADE_RUNTIME',subtype:'CDN',detail:'Could not load Phaser (CDN). Check internet and tap Retry.'}))}catch(_){}})()"><\/script>
 <script>(function(){
-var CDN=["https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js","https://unpkg.com/phaser@3.80.1/dist/phaser.min.js"];
-var CDN_I=-1;
 function post(o){try{window.ReactNativeWebView&&window.ReactNativeWebView.postMessage(typeof o==="string"?o:JSON.stringify(o))}catch(_){}}
-function fail(m){post({type:"ARCADE_RUNTIME",subtype:"CDN_FAIL",detail:String(m||"Phaser failed to load")})}
-function inject(){
-CDN_I++;if(CDN_I>=CDN.length)return fail("All Phaser CDN mirrors failed");var s=document.createElement("script");
-s.async=false;s.src=CDN[CDN_I];s.onload=function(){boot()};s.onerror=function(){inject()};(document.head||document.documentElement).appendChild(s);
-}
-function boot(){
-if(window.__ludoPhaserBoot)return;window.__ludoPhaserBoot=1;if(typeof Phaser==="undefined"){fail("Phaser missing after CDN");return;}
+function fail(m){post({type:"ARCADE_RUNTIME",subtype:"BOOT",detail:String(m||"Game failed to start")})}
+if(window.__ludoPhaserBoot)return;window.__ludoPhaserBoot=1;
+if(typeof Phaser==="undefined"){fail("Phaser did not load — check network and try again");return;}
 try{
 var W=400,H=668,N=40,E0=0,E1=20,G=48;
 function XY(i){var t=i/N*Math.PI*2-Math.PI*.5,R=118;return{x:W*.5+R*Math.cos(t),y:H*.4+R*Math.sin(t)};}
@@ -75,8 +70,6 @@ if(!tu){if(a<0){if(d===6)a=E0;}else{a=(a+d)%N;if(a===b)b=-1;ta+=d;if(ta>=G)retur
 tu=!tu;h.setText((tu?"P2 cyan":"P1 orange")+" · purple ROLL");tk();});};
 new Phaser.Game({type:Phaser.AUTO,width:W,height:H,parent:"g",scene:Ud,backgroundColor:2039594,scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH}});
 post({type:"ARCADE_SURFACE_OK",surface:"ludo"});
-}catch(e){fail(e&&e.message?e.message:"boot_error")}}
-}
-inject();
+}catch(e){fail(e&&e.message?e.message:"boot_error")}
 })();
 <\/script></body></html>`;

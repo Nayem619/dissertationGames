@@ -105,6 +105,7 @@ export function PhaserInlineWebView({
         message: String(o.surface || ""),
         hypothesisId: "arcade-phaser-ready",
       });
+      setLoading(false);
       return;
     }
     if (onBridgeMessage) onBridgeMessage(o);
@@ -127,7 +128,6 @@ export function PhaserInlineWebView({
           </TouchableOpacity>
         ) : null}
       </View>
-      <Text style={styles.cdnHint}>Loads Phaser via CDN · needs network</Text>
       {!!runtimeError && (
         <View style={styles.errRow}>
           <Text style={styles.errText}>{runtimeError}</Text>
@@ -149,6 +149,9 @@ export function PhaserInlineWebView({
           <View style={styles.overlay}>
             <ActivityIndicator size="large" color={Nexus.green} />
             <Text style={styles.ot}>Loading game…</Text>
+            <Text style={styles.cdnOverlayHint}>
+              First open loads Phaser from the internet · stay online
+            </Text>
           </View>
         ) : null}
         <WebView
@@ -181,12 +184,13 @@ const styles = StyleSheet.create({
     borderBottomColor: Nexus.borderDim,
   },
   hit: { padding: 6 },
-  cdnHint: {
-    paddingVertical: 4,
-    paddingHorizontal: 12,
+  cdnOverlayHint: {
+    marginTop: 10,
+    paddingHorizontal: 24,
     fontSize: 11,
     color: Nexus.textMuted,
-    backgroundColor: Nexus.bgElevated,
+    textAlign: "center",
+    lineHeight: 15,
   },
   errRow: {
     paddingVertical: 8,
