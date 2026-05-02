@@ -43,7 +43,7 @@ config.resolver.extraNodeModules = {
 // `sudo` (don’t use sudo for Expo). Slightly slower file watching, but stable.
 config.resolver.useWatchman = false;
 
-/** Arcade Phaser bundled as a static asset (see assets/phaser/*.bundle). */
+/** Arcade Phaser vendor script is shipped as `assets/phaser/phaser-3.80.1.min.db` (.db is a default Metro asset ext). */
 config.resolver.assetExts =
   [...(config.resolver.assetExts ?? []), "bundle"].filter((e, i, a) => a.indexOf(e) === i);
 

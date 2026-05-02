@@ -51,7 +51,8 @@ export const COMMON_WEBVIEW_PROPS = {
 };
 
 const PHASER_CDN_JS = "https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js";
-const LOCAL_PHASER_FILENAME = "phaser-3.80.1.min.bundle";
+/** Basename next to unpacked asset URI; `.db` is a default Metro asset extension. */
+const LOCAL_PHASER_FILENAME = "phaser-3.80.1.min.db";
 
 function patchArcadeHtmlToBundledPhaser(html) {
   const h = html ?? "";
@@ -59,7 +60,7 @@ function patchArcadeHtmlToBundledPhaser(html) {
   return h.split(PHASER_CDN_JS).join(LOCAL_PHASER_FILENAME);
 }
 
-const LOCAL_PHASER_ASSET = require("../../assets/phaser/phaser-3.80.1.min.bundle");
+const LOCAL_PHASER_ASSET = require("../../assets/phaser/phaser-3.80.1.min.db");
 
 async function resolveBundledPhaserBaseDirectory() {
   if (Platform.OS === "web") return "";
