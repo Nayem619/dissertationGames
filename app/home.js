@@ -50,42 +50,6 @@ const TRIVIA_HOME_CARD = {
 
 const GAMES = [
   TRIVIA_HOME_CARD,
-  {
-    id: "puzzle",
-    name: "PUZZLE LADDER · Flow / Pipe / Ice",
-    icon: "🔗",
-    href: { pathname: "/puzzle-ladder" },
-    route: null,
-    accent: {
-      bg: "rgba(34,211,238,0.1)",
-      border: "rgba(34,211,238,0.45)",
-      iconBg: "#0e7490",
-    },
-  },
-  {
-    id: "puzzle-pipe",
-    name: "PIPE PUZZLE (SOLO)",
-    icon: "⊕",
-    href: { pathname: "/puzzle/pipe" },
-    route: null,
-    accent: {
-      bg: "rgba(3,105,161,0.12)",
-      border: "rgba(56,189,248,0.45)",
-      iconBg: "#0369a1",
-    },
-  },
-  {
-    id: "puzzle-ice",
-    name: "ICE SLIDE (SOLO)",
-    icon: "❄️",
-    href: { pathname: "/puzzle/ice" },
-    route: null,
-    accent: {
-      bg: "rgba(124,58,237,0.12)",
-      border: "rgba(196,181,253,0.42)",
-      iconBg: "#7c3aed",
-    },
-  },
   ...HOME_ARCADE_CARDS,
   {
     id: "tictactoe",
