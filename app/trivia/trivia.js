@@ -332,6 +332,10 @@ async function buildQuizForDifficulty(difficulty) {
 
 function TriviaGameInner() {
   const router = useRouter();
+  const exitTrivia = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace("/home");
+  };
   const search = useLocalSearchParams();
   const challengeId = Array.isArray(search.challengeId)
     ? search.challengeId[0]
@@ -523,19 +527,31 @@ function TriviaGameInner() {
       : "0%";
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "right", "left"]}>
+    <SafeAreaView style={styles.safe} edges={["top", "right", "left", "bottom"]}>
       <StatusBar style="light" />
       <View style={styles.root}>
         <View style={styles.glowG} />
         <View style={styles.glowM} />
         <View style={styles.glowPink} />
 
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={styles.topBackHit}
+            onPress={exitTrivia}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
+            <Text style={styles.topBackGlyph}>‹</Text>
+            <Text style={styles.topBackLabel}>Back</Text>
+          </TouchableOpacity>
+        </View>
+
         <ScrollView
+          style={styles.scrollFlex}
           contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.scrollInner}>
-            <View style={styles.card}>
+          <View style={styles.contentFill}>
           <View style={styles.heroRow}>
             <View
               style={[
@@ -671,13 +687,6 @@ function TriviaGameInner() {
               >
                 <Text style={styles.leaderboardButtonText}>View Leaderboard</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => router.push("/home")}
-              >
-                <Text style={styles.backButtonText}>Back to Main Menu</Text>
-              </TouchableOpacity>
             </>
           ) : null}
 
@@ -764,13 +773,6 @@ function TriviaGameInner() {
               >
                 <Text style={styles.leaderboardButtonText}>View Leaderboard</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => router.push("/home")}
-              >
-                <Text style={styles.backButtonText}>Back to Main Menu</Text>
-              </TouchableOpacity>
             </>
           ) : null}
 
@@ -807,16 +809,8 @@ function TriviaGameInner() {
               >
                 <Text style={styles.leaderboardButtonText}>View Leaderboard</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => router.push("/home")}
-              >
-                <Text style={styles.backButtonText}>Back to Main Menu</Text>
-              </TouchableOpacity>
             </>
           ) : null}
-            </View>
           </View>
         </ScrollView>
       </View>
@@ -860,34 +854,49 @@ const styles = StyleSheet.create({
     top: "28%",
     left: -45,
   },
+  topBar: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingLeft: 4,
+    paddingRight: 12,
+    paddingVertical: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Nexus.borderDim,
+    backgroundColor: "rgba(10, 10, 15, 0.72)",
+  },
+  topBackHit: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+  },
+  topBackGlyph: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: Nexus.cyan,
+    marginRight: 2,
+    marginTop: -2,
+  },
+  topBackLabel: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: Nexus.text,
+  },
+  scrollFlex: {
+    flex: 1,
+    width: "100%",
+  },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: 28,
-  },
-  scrollInner: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  card: {
     width: "100%",
-    maxWidth: 560,
-    backgroundColor: Nexus.bgCard,
-    borderRadius: 18,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: TRIVIA_ACCENT.border,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-      },
-      android: { elevation: 10 },
-      default: {},
-    }),
+    paddingHorizontal: 18,
+    paddingBottom: 32,
+    paddingTop: 8,
+  },
+  contentFill: {
+    flexGrow: 1,
+    width: "100%",
   },
 
   heroRow: {
@@ -1257,16 +1266,6 @@ const styles = StyleSheet.create({
     borderColor: Nexus.green,
   },
 
-  backButton: {
-    width: "100%",
-    backgroundColor: "transparent",
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255, 0, 85, 0.45)",
-  },
-
   disabledButton: {
     opacity: 0.45,
   },
@@ -1304,11 +1303,6 @@ const styles = StyleSheet.create({
   },
   leaderboardButtonText: {
     color: Nexus.green,
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  backButtonText: {
-    color: "#ff6b7a",
     fontSize: 15,
     fontWeight: "800",
   },
