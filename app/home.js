@@ -66,28 +66,6 @@ const GAMES = [
     accent: { bg: "rgba(0, 212, 255, 0.12)", border: "rgba(0, 212, 255, 0.45)", iconBg: "#0099cc" },
   },
   {
-    id: "social",
-    name: "ARENA SOCIAL",
-    icon: "🧑‍🚀",
-    route: "/social",
-    accent: {
-      bg: "rgba(0,212,255,0.1)",
-      border: "rgba(0,212,255,0.45)",
-      iconBg: "#0891b2",
-    },
-  },
-  {
-    id: "online",
-    name: "ONLINE TIC-TAC-TOE",
-    icon: "🌐",
-    route: "/multiplayer",
-    accent: {
-      bg: "rgba(56, 189, 248, 0.12)",
-      border: "rgba(56, 189, 248, 0.5)",
-      iconBg: "#0369a1",
-    },
-  },
-  {
     id: "gemmatch",
     name: "GEM MATCH",
     icon: "💎",
@@ -348,7 +326,7 @@ export default function Home() {
             <View style={styles.modCard}>
               <Text style={styles.modTitle}>Quick tour</Text>
               <Text style={styles.modBody}>
-                Tap a card to play solo or hybrid modes. Arcade uses CDN Phaser (needs internet). Online TTT needs two signed-in phones and matching room codes from Firestore.
+                Tap a card to play solo or hybrid modes. Some experiences need remote URLs configured in `.env`; others work fully on-device after sign-in.
               </Text>
               <TouchableOpacity style={styles.modPri} onPress={dismissWalkthrough}>
                 <Text style={styles.modPriT}>Got it</Text>
