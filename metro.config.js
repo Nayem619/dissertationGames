@@ -43,4 +43,21 @@ config.resolver.extraNodeModules = {
 // `sudo` (don’t use sudo for Expo). Slightly slower file watching, but stable.
 config.resolver.useWatchman = false;
 
+/** Arcade Phaser bundled as a static asset (see assets/phaser/*.bundle). */
+config.resolver.assetExts =
+  [...(config.resolver.assetExts ?? []), "bundle"].filter((e, i, a) => a.indexOf(e) === i);
+
+/** Always resolve app entry via node_modules (never a rogue ./expo-router/ shim). */
+const expoRouterEntry = path.join(projectRoot, "node_modules", "expo-router", "entry.js");
+const defaultResolveRequest = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === "expo-router/entry" && fs.existsSync(expoRouterEntry)) {
+    return { type: "sourceFile", filePath: expoRouterEntry };
+  }
+  if (typeof defaultResolveRequest === "function") {
+    return defaultResolveRequest(context, moduleName, platform);
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 module.exports = config;

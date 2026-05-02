@@ -45,12 +45,12 @@ window.onload=function(){new Phaser.Game({type:Phaser.AUTO,width:W,height:H,pare
 /** Circular track, two counters, capture, need 6 to enter — hot-seat (not synced online). Inspired by classic Ludo. */
 export const PHASER_LUDO_LITE_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
 <style>html,body{margin:0;height:100%;background:#1f0f18}</style></head><body><div id="g"></div>
-<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js" crossorigin="anonymous" onerror="(function(){try{window.ReactNativeWebView&&window.ReactNativeWebView.postMessage(JSON.stringify({type:'ARCADE_RUNTIME',subtype:'CDN',detail:'Could not load Phaser (CDN). Check internet and tap Retry.'}))}catch(_){}})()"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"><\/script>
 <script>(function(){
 function post(o){try{window.ReactNativeWebView&&window.ReactNativeWebView.postMessage(typeof o==="string"?o:JSON.stringify(o))}catch(_){}}
 function fail(m){post({type:"ARCADE_RUNTIME",subtype:"BOOT",detail:String(m||"Game failed to start")})}
 if(window.__ludoPhaserBoot)return;window.__ludoPhaserBoot=1;
-if(typeof Phaser==="undefined"){fail("Phaser did not load — check network and try again");return;}
+if(typeof Phaser==="undefined"){fail("Phaser did not load. Tap Retry — the app bundles Phaser for offline play.");return;}
 try{
 var W=400,H=668,N=40,E0=0,E1=20,G=48;
 function XY(i){var t=i/N*Math.PI*2-Math.PI*.5,R=118;return{x:W*.5+R*Math.cos(t),y:H*.4+R*Math.sin(t)};}

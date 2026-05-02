@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Nexus } from "@/constants/theme";
+import { Asset } from "expo-asset";
 import { useMemo, useState, useEffect } from "react";
 import {
   ActivityIndicator,
@@ -43,11 +44,32 @@ export const COMMON_WEBVIEW_PROPS = {
   domStorageEnabled: true,
   allowsInlineMediaPlayback: true,
   mediaPlaybackRequiresUserAction: false,
-  originWhitelist: ["*", "https://*", "http://*"],
+  originWhitelist: ["*", "https://*", "http://*", "file://*", "file://"],
   mixedContentMode: "always",
   setSupportMultipleWindows: false,
   allowsFullscreenVideo: true,
 };
+
+const PHASER_CDN_JS = "https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js";
+const LOCAL_PHASER_FILENAME = "phaser-3.80.1.min.bundle";
+
+function patchArcadeHtmlToBundledPhaser(html) {
+  const h = html ?? "";
+  if (!h.includes(PHASER_CDN_JS)) return h;
+  return h.split(PHASER_CDN_JS).join(LOCAL_PHASER_FILENAME);
+}
+
+const LOCAL_PHASER_ASSET = require("../../assets/phaser/phaser-3.80.1.min.bundle");
+
+async function resolveBundledPhaserBaseDirectory() {
+  if (Platform.OS === "web") return "";
+  const asset = Asset.fromModule(LOCAL_PHASER_ASSET);
+  await asset.downloadAsync();
+  const u = asset.localUri;
+  if (!u) return "";
+  const slash = Math.max(u.lastIndexOf("/"), u.lastIndexOf("\\"));
+  return slash >= 0 ? u.slice(0, slash + 1) : "";
+}
 
 /**
  * Inline Phaser / HTML WebView — loading overlay, RN bridge (NexusPost), optional leaderboard shortcut.
@@ -65,16 +87,49 @@ export function PhaserInlineWebView({
   const [loading, setLoading] = useState(true);
   const [runtimeError, setRuntimeError] = useState("");
   const [wvKey, setWvKey] = useState(0);
+  const [phaserLocalDir, setPhaserLocalDir] = useState("");
+  const [phaserAssetReady, setPhaserAssetReady] = useState(Platform.OS === "web");
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const dir = await resolveBundledPhaserBaseDirectory();
+        if (!cancelled) setPhaserLocalDir(dir || "");
+      } catch {
+        if (!cancelled) setPhaserLocalDir("");
+      } finally {
+        if (!cancelled) setPhaserAssetReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     setRuntimeError("");
     setLoading(true);
   }, [html]);
 
+  const resolvedBaseUrl =
+    (phaserLocalDir ? phaserLocalDir : undefined) ?? baseUrl ?? undefined;
+
+  const usesBundledPhaser = !!(phaserLocalDir && phaserLocalDir.length);
+
   const source = useMemo(() => {
-    const wrapped = injectBridge(html ?? "");
-    return baseUrl ? { html: wrapped, baseUrl } : { html: wrapped };
-  }, [html, baseUrl]);
+    const raw = html ?? "";
+    const patched = usesBundledPhaser ? patchArcadeHtmlToBundledPhaser(raw) : raw;
+    const wrapped = injectBridge(patched);
+    if (resolvedBaseUrl) return { html: wrapped, baseUrl: resolvedBaseUrl };
+    return { html: wrapped };
+  }, [html, resolvedBaseUrl, usesBundledPhaser]);
+
+  const iosPhaserReadUrl =
+    usesBundledPhaser && Platform.OS === "ios"
+      ? phaserLocalDir.replace(/\/+$/, "")
+      : undefined;
 
   const handleMsg = (e) => {
     const raw = e?.nativeEvent?.data;
@@ -145,30 +200,44 @@ export function PhaserInlineWebView({
         </View>
       )}
       <View style={styles.wrap}>
-        {loading ? (
+        {!phaserAssetReady ? (
           <View style={styles.overlay}>
             <ActivityIndicator size="large" color={Nexus.green} />
-            <Text style={styles.ot}>Loading game…</Text>
-            <Text style={styles.cdnOverlayHint}>
-              First open loads Phaser from the internet · stay online
-            </Text>
+            <Text style={styles.ot}>Preparing arcade…</Text>
           </View>
-        ) : null}
-        <WebView
-          key={wvKey}
-          source={source}
-          style={styles.wv}
-          {...COMMON_WEBVIEW_PROPS}
-          onLoadEnd={() => setLoading(false)}
-          onError={(ev) => {
-            const d = ev?.nativeEvent?.description;
-            setLoading(false);
-            setRuntimeError((prev) =>
-              prev || String(d || (Platform.OS === "web" ? "Web view error" : "Load error"))
-            );
-          }}
-          onMessage={handleMsg}
-        />
+        ) : (
+          <>
+            {loading ? (
+              <View style={styles.overlay}>
+                <ActivityIndicator size="large" color={Nexus.green} />
+                <Text style={styles.ot}>Loading game…</Text>
+                <Text style={styles.cdnOverlayHint}>
+                  {usesBundledPhaser
+                    ? "Using bundled Phaser (offline-friendly)."
+                    : "Loading Phaser from the CDN (needs internet)."}
+                </Text>
+              </View>
+            ) : null}
+            <WebView
+              key={wvKey}
+              source={source}
+              style={styles.wv}
+              {...COMMON_WEBVIEW_PROPS}
+              allowFileAccess={usesBundledPhaser}
+              allowUniversalAccessFromFileURLs={usesBundledPhaser}
+              allowingReadAccessToURL={iosPhaserReadUrl}
+              onLoadEnd={() => setLoading(false)}
+              onError={(ev) => {
+                const d = ev?.nativeEvent?.description;
+                setLoading(false);
+                setRuntimeError((prev) =>
+                  prev || String(d || (Platform.OS === "web" ? "Web view error" : "Load error"))
+                );
+              }}
+              onMessage={handleMsg}
+            />
+          </>
+        )}
       </View>
     </View>
   );
