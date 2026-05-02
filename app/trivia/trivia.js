@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import { StatusBar } from "expo-status-bar";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { getAuth } from "firebase/auth";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
@@ -13,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   PlayEntitlementSplash,
   useConsumePlayEntitlement,
@@ -20,8 +22,16 @@ import {
 import { getISOWeekKey } from "../../lib/weekKey";
 import { db } from "../../constants/firebase";
 import { softAcceptChallenge } from "@/lib/challenges";
+import { Nexus } from "@/constants/theme";
 
 const auth = getAuth();
+
+/** Matches trivia card on Play Hub (`app/home.js`). */
+const TRIVIA_ACCENT = {
+  border: "rgba(255, 0, 255, 0.45)",
+  soft: "rgba(255, 0, 255, 0.12)",
+  iconBg: "#d946b8",
+};
 
 const TRIVIA_QUIZ_LENGTH = 5;
 const OPENAI_FETCH_TIMEOUT_MS = 60_000;
@@ -481,7 +491,7 @@ function TriviaGameInner() {
 
   const getOptionStyle = (option) => {
     if (!answered) {
-      return styles.optionButton;
+      return [styles.optionButton, styles.optionIdle];
     }
 
     if (option === currentQuestion.answer) {
@@ -492,7 +502,7 @@ function TriviaGameInner() {
       return [styles.optionButton, styles.wrongOption];
     }
 
-    return styles.optionButton;
+    return [styles.optionButton, styles.optionFaded];
   };
 
   const getOptionTextStyle = (option) => {
@@ -501,20 +511,55 @@ function TriviaGameInner() {
     }
 
     if (option === currentQuestion.answer || option === selectedAnswer) {
-      return [styles.optionText, styles.selectedOptionText];
+      return [styles.optionText, styles.optionTextOnAccent];
     }
 
-    return styles.optionText;
+    return [styles.optionText, styles.optionTextFaded];
   };
 
+  const progressPct =
+    started && questions.length > 0
+      ? `${Math.round(((questionIndex + 1) / questions.length) * 100)}%`
+      : "0%";
+
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
-      <View style={styles.container}>
-        <View style={styles.card}>
-          <Text style={styles.title}>Trivia Game</Text>
-          <Text style={styles.subtitle}>
-            Answer the questions and test your knowledge
+    <SafeAreaView style={styles.safe} edges={["top", "right", "left"]}>
+      <StatusBar style="light" />
+      <View style={styles.root}>
+        <View style={styles.glowG} />
+        <View style={styles.glowM} />
+        <View style={styles.glowPink} />
+
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.scrollInner}>
+            <View style={styles.card}>
+          <View style={styles.heroRow}>
+            <View
+              style={[
+                styles.heroIconWrap,
+                { backgroundColor: TRIVIA_ACCENT.iconBg },
+              ]}
+            >
+              <Text style={styles.heroIcon}>🧠</Text>
+            </View>
+            <View style={styles.heroTitles}>
+              <Text style={styles.title}>TRIVIA</Text>
+              <Text style={styles.subtitle}>Arena Quiz</Text>
+            </View>
+          </View>
+          {!started ? (
+            <View style={styles.aiPill}>
+              <Text style={styles.aiPillText}>✨ AI-generated · fresh each quiz</Text>
+            </View>
+          ) : null}
+          {!started ? (
+          <Text style={styles.introBody}>
+            Pick a level and play five rounds. Questions are generated on demand—no stale bank.
           </Text>
+          ) : null}
 
           {!started && !finished ? (
             <>
@@ -598,7 +643,7 @@ function TriviaGameInner() {
 
               {loadingQuiz ? (
                 <View style={styles.loadingBox}>
-                  <ActivityIndicator size="large" color="#007bff" />
+                  <ActivityIndicator size="large" color={Nexus.green} />
                   <Text style={styles.loadingText}>Preparing your quiz…</Text>
                 </View>
               ) : null}
@@ -624,20 +669,31 @@ function TriviaGameInner() {
                 style={styles.leaderboardButton}
                 onPress={() => router.push("/Leaderboard/leaderboard?game=trivia")}
               >
-                <Text style={styles.buttonText}>View Leaderboard</Text>
+                <Text style={styles.leaderboardButtonText}>View Leaderboard</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.backButton}
                 onPress={() => router.push("/home")}
               >
-                <Text style={styles.buttonText}>Back to Main Menu</Text>
+                <Text style={styles.backButtonText}>Back to Main Menu</Text>
               </TouchableOpacity>
             </>
           ) : null}
 
           {started && !finished && currentQuestion ? (
             <>
+              <View style={styles.quizAiRow}>
+                <View style={styles.aiBadgeSmall}>
+                  <Text style={styles.aiBadgeSmallText}>✨ AI question</Text>
+                </View>
+                <Text style={styles.aiBadgeCaption}>Powered by AI — verify facts if unsure</Text>
+              </View>
+
+              <View style={styles.progressTrack}>
+                <View style={[styles.progressFill, { width: progressPct }]} />
+              </View>
+
               <View style={styles.infoRow}>
                 <View style={styles.infoBox}>
                   <Text style={styles.infoLabel}>Question</Text>
@@ -706,14 +762,14 @@ function TriviaGameInner() {
                 style={styles.leaderboardButton}
                 onPress={() => router.push("/Leaderboard/leaderboard?game=trivia")}
               >
-                <Text style={styles.buttonText}>View Leaderboard</Text>
+                <Text style={styles.leaderboardButtonText}>View Leaderboard</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.backButton}
                 onPress={() => router.push("/home")}
               >
-                <Text style={styles.buttonText}>Back to Main Menu</Text>
+                <Text style={styles.backButtonText}>Back to Main Menu</Text>
               </TouchableOpacity>
             </>
           ) : null}
@@ -722,6 +778,9 @@ function TriviaGameInner() {
             <>
               <View style={styles.finishBox}>
                 <Text style={styles.finishTitle}>Quiz Finished</Text>
+                <View style={styles.aiPillMuted}>
+                  <Text style={styles.aiPillMutedText}>✨ AI-generated quiz</Text>
+                </View>
                 <Text style={styles.finishSubtitle}>
                   Difficulty: {getDifficultyLabel()}
                 </Text>
@@ -746,58 +805,202 @@ function TriviaGameInner() {
                 style={styles.leaderboardButton}
                 onPress={() => router.push("/Leaderboard/leaderboard?game=trivia")}
               >
-                <Text style={styles.buttonText}>View Leaderboard</Text>
+                <Text style={styles.leaderboardButtonText}>View Leaderboard</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.backButton}
                 onPress={() => router.push("/home")}
               >
-                <Text style={styles.buttonText}>Back to Main Menu</Text>
+                <Text style={styles.backButtonText}>Back to Main Menu</Text>
               </TouchableOpacity>
             </>
           ) : null}
-        </View>
+            </View>
+          </View>
+        </ScrollView>
       </View>
-    </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: Nexus.bg,
+  },
+  root: {
+    flex: 1,
+    backgroundColor: Nexus.bg,
+  },
+  glowG: {
+    position: "absolute",
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: "rgba(0, 255, 136, 0.07)",
+    top: -30,
+    right: -70,
+  },
+  glowM: {
+    position: "absolute",
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: "rgba(0, 212, 255, 0.06)",
+    bottom: 80,
+    left: -60,
+  },
+  glowPink: {
+    position: "absolute",
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: "rgba(217, 70, 184, 0.08)",
+    top: "28%",
+    left: -45,
+  },
   scrollContainer: {
     flexGrow: 1,
+    paddingBottom: 28,
   },
-
-  container: {
+  scrollInner: {
     flex: 1,
-    backgroundColor: "#eaf4ff",
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
   },
-
   card: {
     width: "100%",
     maxWidth: 560,
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
+    backgroundColor: Nexus.bgCard,
+    borderRadius: 18,
     padding: 20,
-    elevation: 4,
+    borderWidth: 2,
+    borderColor: TRIVIA_ACCENT.border,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+      },
+      android: { elevation: 10 },
+      default: {},
+    }),
   },
 
+  heroRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  heroIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
+  },
+  heroIcon: {
+    fontSize: 28,
+  },
+  heroTitles: {
+    flex: 1,
+  },
   title: {
     fontSize: 30,
-    fontWeight: "bold",
-    color: "#222",
-    textAlign: "center",
-    marginBottom: 6,
+    fontWeight: "900",
+    letterSpacing: 1,
+    color: Nexus.text,
+    textShadowColor: TRIVIA_ACCENT.soft,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 16,
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: Nexus.magenta,
+    textTransform: "uppercase",
+    letterSpacing: 1,
   },
 
-  subtitle: {
-    fontSize: 14,
-    color: "#666",
+  aiPill: {
+    alignSelf: "stretch",
+    backgroundColor: TRIVIA_ACCENT.soft,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 0, 255, 0.28)",
+  },
+  aiPillText: {
+    color: Nexus.text,
+    fontSize: 13,
+    fontWeight: "700",
     textAlign: "center",
-    marginBottom: 20,
+  },
+  aiPillMuted: {
+    alignSelf: "stretch",
+    marginBottom: 10,
+    alignItems: "center",
+  },
+  aiPillMutedText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: Nexus.textMuted,
+  },
+
+  introBody: {
+    fontSize: 14,
+    color: Nexus.textMuted,
+    lineHeight: 21,
+    marginBottom: 16,
+    textAlign: "center",
+  },
+
+  quizAiRow: {
+    alignItems: "center",
+    marginBottom: 10,
+    gap: 6,
+  },
+  aiBadgeSmall: {
+    backgroundColor: TRIVIA_ACCENT.soft,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255, 0, 255, 0.35)",
+  },
+  aiBadgeSmallText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: Nexus.text,
+  },
+  aiBadgeCaption: {
+    fontSize: 11,
+    color: Nexus.textMuted,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+
+  progressTrack: {
+    width: "100%",
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "rgba(26, 26, 36, 0.95)",
+    overflow: "hidden",
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: Nexus.borderDim,
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 3,
+    backgroundColor: Nexus.cyan,
   },
 
   infoRow: {
@@ -808,29 +1011,34 @@ const styles = StyleSheet.create({
 
   infoBox: {
     flex: 1,
-    backgroundColor: "#f8f9fc",
+    backgroundColor: "rgba(26, 26, 36, 0.92)",
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 8,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: Nexus.borderDim,
   },
 
   infoLabel: {
-    fontSize: 13,
-    color: "#666",
-    marginBottom: 4,
+    fontSize: 11,
+    fontWeight: "700",
+    color: Nexus.textMuted,
+    marginBottom: 5,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 
   infoValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#222",
+    fontSize: 17,
+    fontWeight: "800",
+    color: Nexus.text,
   },
 
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: "#333",
+    fontSize: 16,
+    fontWeight: "800",
+    color: Nexus.text,
     marginBottom: 12,
     textAlign: "center",
   },
@@ -843,49 +1051,65 @@ const styles = StyleSheet.create({
 
   difficultyButton: {
     flex: 1,
-    backgroundColor: "#f1f3f5",
-    paddingVertical: 12,
+    backgroundColor: Nexus.bgElevated,
+    paddingVertical: 13,
     borderRadius: 10,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.06)",
   },
 
   easyActive: {
-    backgroundColor: "#28a745",
+    backgroundColor: Nexus.green,
+    borderColor: Nexus.green,
   },
 
   mediumActive: {
-    backgroundColor: "#f0ad4e",
+    backgroundColor: Nexus.cyan,
+    borderColor: Nexus.cyan,
   },
 
   hardActive: {
-    backgroundColor: "#dc3545",
+    backgroundColor: Nexus.pink,
+    borderColor: Nexus.pink,
   },
 
   difficultyText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#333",
+    fontSize: 14,
+    fontWeight: "800",
+    color: Nexus.textMuted,
   },
 
   activeButtonText: {
-    color: "#fff",
+    color: Nexus.darkText,
   },
 
   questionCard: {
-    backgroundColor: "#f8f9fc",
-    borderRadius: 12,
-    padding: 18,
+    backgroundColor: "rgba(26, 26, 36, 0.92)",
+    borderRadius: 14,
+    padding: 20,
     marginBottom: 16,
     minHeight: 100,
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(0, 212, 255, 0.2)",
+    ...Platform.select({
+      ios: {
+        shadowColor: Nexus.cyan,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.12,
+        shadowRadius: 12,
+      },
+      default: {},
+    }),
   },
 
   questionText: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#222",
+    fontSize: 19,
+    fontWeight: "700",
+    color: Nexus.text,
     textAlign: "center",
-    lineHeight: 28,
+    lineHeight: 27,
   },
 
   optionsBox: {
@@ -893,124 +1117,158 @@ const styles = StyleSheet.create({
   },
 
   optionButton: {
-    backgroundColor: "#f1f3f5",
-    borderRadius: 10,
-    paddingVertical: 14,
+    borderRadius: 12,
+    paddingVertical: 15,
     paddingHorizontal: 14,
     marginBottom: 10,
+    borderWidth: 1,
+  },
+  optionIdle: {
+    backgroundColor: Nexus.bgElevated,
+    borderColor: "rgba(217, 70, 184, 0.22)",
+  },
+  optionFaded: {
+    backgroundColor: "rgba(15, 15, 20, 0.7)",
+    borderColor: "rgba(255, 255, 255, 0.04)",
+    opacity: 0.55,
   },
 
   optionText: {
     fontSize: 16,
-    color: "#222",
+    color: Nexus.text,
     textAlign: "center",
-    fontWeight: "500",
+    fontWeight: "600",
+  },
+  optionTextOnAccent: {
+    color: Nexus.darkText,
+  },
+  optionTextFaded: {
+    color: Nexus.textMuted,
   },
 
   correctOption: {
-    backgroundColor: "#28a745",
+    backgroundColor: Nexus.green,
+    borderColor: Nexus.green,
   },
 
   wrongOption: {
-    backgroundColor: "#dc3545",
-  },
-
-  selectedOptionText: {
-    color: "#fff",
+    backgroundColor: Nexus.pink,
+    borderColor: Nexus.pink,
   },
 
   resultBox: {
-    backgroundColor: "#f8f9fc",
-    borderRadius: 10,
-    padding: 12,
+    backgroundColor: "rgba(26, 26, 36, 0.95)",
+    borderRadius: 12,
+    padding: 14,
     marginBottom: 14,
+    borderWidth: 1,
+    borderColor: Nexus.borderDim,
   },
 
   resultText: {
     fontSize: 15,
     textAlign: "center",
-    fontWeight: "600",
+    fontWeight: "700",
   },
 
   correctText: {
-    color: "#28a745",
+    color: Nexus.green,
   },
 
   wrongText: {
-    color: "#dc3545",
+    color: "#ff6b7a",
   },
 
   finishBox: {
-    backgroundColor: "#f8f9fc",
-    borderRadius: 12,
-    padding: 20,
+    backgroundColor: "rgba(26, 26, 36, 0.92)",
+    borderRadius: 14,
+    padding: 22,
     marginBottom: 18,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: TRIVIA_ACCENT.border,
   },
 
   finishTitle: {
     fontSize: 26,
-    fontWeight: "bold",
-    color: "#222",
+    fontWeight: "900",
+    color: Nexus.text,
     marginBottom: 8,
   },
 
   finishSubtitle: {
-    fontSize: 15,
-    color: "#666",
+    fontSize: 14,
+    color: Nexus.textMuted,
     marginBottom: 10,
+    fontWeight: "600",
   },
 
   finalScore: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#007bff",
+    fontSize: 24,
+    fontWeight: "900",
+    color: Nexus.cyan,
     marginBottom: 10,
   },
 
   feedbackText: {
     fontSize: 16,
-    color: "#333",
+    color: Nexus.textMuted,
     textAlign: "center",
+    lineHeight: 23,
+    fontWeight: "600",
   },
 
   startButton: {
     width: "100%",
-    backgroundColor: "#007bff",
-    paddingVertical: 14,
-    borderRadius: 10,
+    backgroundColor: Nexus.green,
+    paddingVertical: 15,
+    borderRadius: 12,
     alignItems: "center",
     marginBottom: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: Nexus.green,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+      },
+      android: { elevation: 6 },
+      default: {},
+    }),
   },
 
   nextButton: {
     width: "100%",
-    backgroundColor: "#007bff",
-    paddingVertical: 14,
-    borderRadius: 10,
+    backgroundColor: Nexus.cyan,
+    paddingVertical: 15,
+    borderRadius: 12,
     alignItems: "center",
     marginBottom: 10,
   },
 
   leaderboardButton: {
     width: "100%",
-    backgroundColor: "#28a745",
+    backgroundColor: "transparent",
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: "center",
     marginBottom: 10,
+    borderWidth: 2,
+    borderColor: Nexus.green,
   },
 
   backButton: {
     width: "100%",
-    backgroundColor: "#6c757d",
+    backgroundColor: "transparent",
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 0, 85, 0.45)",
   },
 
   disabledButton: {
-    opacity: 0.5,
+    opacity: 0.45,
   },
 
   loadingBox: {
@@ -1020,25 +1278,39 @@ const styles = StyleSheet.create({
 
   loadingText: {
     marginTop: 8,
-    color: "#666",
-    fontSize: 15,
+    color: Nexus.textMuted,
+    fontSize: 14,
+    fontWeight: "600",
   },
 
   loadErrorBanner: {
     marginBottom: 12,
     padding: 12,
-    borderRadius: 10,
-    backgroundColor: "#fff3cd",
-    color: "#856404",
-    fontSize: 14,
-    lineHeight: 20,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 180, 0, 0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 200, 80, 0.35)",
+    color: "#ffd88a",
+    fontSize: 13,
+    lineHeight: 19,
     textAlign: "center",
+    fontWeight: "600",
   },
 
   buttonText: {
-    color: "#fff",
+    color: Nexus.darkText,
     fontSize: 15,
-    fontWeight: "600",
+    fontWeight: "800",
+  },
+  leaderboardButtonText: {
+    color: Nexus.green,
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  backButtonText: {
+    color: "#ff6b7a",
+    fontSize: 15,
+    fontWeight: "800",
   },
 });
 
